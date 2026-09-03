@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>余小莫 · 实验室作品集 — vibe coding for LOVE</title>
+<style>
+/* ============ 昼夜节律主题 ============ */
+:root, [data-mode="day"] {
+  --paper: #f6f1e6;
+  --paper-2: #efe8d8;
+  --ink: #2b2620;
+  --ink-soft: #6b6355;
+  --ink-faint: #a89e8c;
+  --accent: #8a5a2b;
+  --line: #d8cfbc;
+  --card: #fbf8f0;
+  --star: #2b2620;
+  --glow: rgba(43,38,32,.35);
+  --sky: linear-gradient(180deg, #e9e2d2 0%, #f6f1e6 100%);
+  --badge: #2b2620;
+  --badge-fg: #f6f1e6;
+}
+[data-mode="night"] {
+  --paper: #101522;
+  --paper-2: #161d2e;
+  --ink: #e8e2d4;
+  --ink-soft: #9d97a8;
+  --ink-faint: #5d5a6e;
+  --accent: #d9a45b;
+  --line: #2a3350;
+  --card: #151c2c;
+  --star: #ffe9b8;
+  --glow: rgba(255,233,184,.55);
+  --sky: radial-gradient(ellipse at 50% 120%, #070a14 0%, #010204 75%);
+  --badge: #e8e2d4;
+  --badge-fg: #101522;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Songti SC", "Noto Serif SC", "SimSun", Georgia, serif;
+  transition: background .6s, color .6s;
+  overflow-x: hidden;
+}
+.mono { font-family: "SFMono-Regular", Consolas, "Courier New", monospace; }
+
+/* ============ 顶栏 ============ */
+header {
+  position: fixed; top:0; left:0; right:0; z-index: 50;
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 14px 28px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+.logo { font-size: 15px; letter-spacing: .12em; }
+.logo b { border:1.5px solid var(--ink); padding:2px 8px; margin-right:10px; }
+#modeToggle {
+  cursor:pointer; border:1.5px solid var(--ink); background:none; color:var(--ink);
+  padding:6px 14px; font-size:12px; letter-spacing:.15em; border-radius:999px;
+  font-family: inherit; transition: all .3s;
+}
+#modeToggle:hover { background: var(--ink); color: var(--paper); }
+
+/* ============ HERO 星空星座导航 ============ */
+#hero { position:relative; height: 92vh; min-height:560px; background: var(--sky); overflow:hidden; }
+#sky { position:absolute; inset:0; width:100%; height:100%; }
+#galaxy { position:absolute; inset:0; width:100%; height:100%; }
+.hero-title {
+  position:absolute; top: 20%; left: 50%; transform: translateX(-50%);
+  text-align:center; pointer-events:none; width: 92%;
+}
+.hero-title .fig { font-size:12px; letter-spacing:.4em; color:var(--ink-soft); }
+.hero-title h1 { font-size: clamp(34px, 6vw, 68px); font-weight:700; letter-spacing:.08em; margin:14px 0 10px; }
+.hero-title p { color:var(--ink-soft); font-size:15px; letter-spacing:.2em; }
+.hero-title p .mono { color:var(--accent); }
+.hero-hint {
+  position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
+  font-size:12px; letter-spacing:.3em; color:var(--ink-faint);
+  animation: bob 2.4s ease-in-out infinite;
+}
+@keyframes bob { 0%,100%{transform:translate(-50%,0)} 50%{transform:translate(-50%,8px)} }
+.star-tip {
+  position:absolute; pointer-events:none; z-index:5;
+  background: var(--badge); color: var(--badge-fg);
+  font-size:12px; padding:4px 12px; border-radius:3px;
+  letter-spacing:.1em; opacity:0; transition:opacity .2s; white-space:nowrap;
+  transform: translate(-50%, -160%);
+}
+
+/* ============ 版面 ============ */
+section { max-width: 1060px; margin: 0 auto; padding: 90px 28px 40px; }
+.sec-head { display:flex; align-items:center; gap:16px; border-bottom:2px solid var(--ink); padding-bottom:12px; margin-bottom:40px; }
+.sec-head .fig-no { font-size:13px; letter-spacing:.25em; color:var(--accent); align-self:baseline; }
+.sec-head h2 { font-size: clamp(22px,3.4vw,32px); letter-spacing:.1em; }
+.sec-head .en { margin-left:auto; font-size:11px; letter-spacing:.3em; color:var(--ink-faint); align-self:baseline; }
+.more-link { margin-left:18px; font-size:12px; letter-spacing:.12em; color:var(--accent); text-decoration:none; border:1.2px solid var(--accent); padding:5px 12px; border-radius:999px; white-space:nowrap; transition:.2s; }
+.more-link:hover { background:var(--accent); color:var(--paper); }
+.sec-head .mini-const { flex:none; }
+.sec-head .mini-const polyline { stroke: var(--ink-faint); stroke-width:.8; stroke-dasharray:2 2; }
+.sec-head .mini-const circle { fill: var(--accent); }
+
+/* 侧边星座罗盘（贯穿全站的导航） */
+#compass {
+  position:fixed; right:18px; top:50%; transform:translateY(-50%); z-index:60;
+  display:flex; flex-direction:column; gap:20px; align-items:center;
+}
+#compass a { display:block; opacity:.4; transition:opacity .3s, transform .3s; position:relative; }
+#compass a:hover, #compass a.active { opacity:1; transform:scale(1.25); }
+#compass a svg { display:block; }
+#compass a polyline { stroke: var(--ink-faint); stroke-width:.8; stroke-dasharray:2 2; }
+#compass a { color: var(--ink-faint); }
+#compass a circle { fill: var(--ink-soft); }
+#compass a.active circle { fill: var(--accent); }
+#compass a .clabel {
+  position:absolute; right:36px; top:50%; transform:translateY(-50%);
+  font-size:11px; letter-spacing:.15em; color:var(--ink-soft);
+  background:var(--card); border:1px solid var(--line); padding:3px 10px; border-radius:3px;
+  white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#compass a:hover .clabel { opacity:1; }
+@media (max-width:900px){ #compass { display:none; } }
+
+/* ============ 专利插图框 ============ */
+.patent {
+  border:1.5px solid var(--ink); background:var(--card); position:relative;
+  padding:34px 28px 22px;
+}
+.patent::before {
+  content:""; position:absolute; inset:6px; border:1px dashed var(--ink-faint); pointer-events:none;
+}
+.patent .figcap {
+  position:absolute; top:-12px; left:24px; background:var(--paper); padding:0 12px;
+  font-size:13px; letter-spacing:.3em; color:var(--accent);
+}
+.ref-num {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:20px; border:1.2px solid var(--ink); border-radius:50%;
+  font-size:11px; font-style:italic; margin-right:6px; flex:none;
+}
+
+/* ============ Skill 图鉴 ============ */
+.dex { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap:26px; }
+.dex-card {
+  border:2px solid var(--ink); background:var(--card); position:relative;
+  transition: transform .25s, box-shadow .25s;
+}
+.dex-card:hover { transform: translateY(-6px); box-shadow: 8px 8px 0 var(--accent); }
+.dex-top { display:flex; justify-content:space-between; padding:12px 16px; border-bottom:1.5px solid var(--ink); font-size:12px; }
+.dex-top .no { letter-spacing:.15em; }
+.dex-top .rare { color:var(--accent); letter-spacing:.2em; }
+.dex-fig { padding:26px 20px 10px; text-align:center; }
+.dex-fig svg { width:110px; height:110px; }
+.dex-fig .leader { font-size:10px; color:var(--ink-faint); letter-spacing:.2em; margin-top:4px; }
+.dex-name { text-align:center; padding:8px 16px 4px; font-size:20px; font-weight:700; letter-spacing:.08em; }
+.dex-type { text-align:center; padding-bottom:14px; }
+.dex-type span {
+  display:inline-block; border:1.2px solid var(--ink); border-radius:999px;
+  font-size:11px; padding:2px 12px; margin:0 4px; letter-spacing:.12em;
+}
+.dex-moves { border-top:1.5px dashed var(--ink-faint); padding:12px 18px 8px; font-size:13px; }
+.dex-moves li { list-style:none; padding:4px 0; color:var(--ink-soft); }
+.dex-moves li b { color:var(--ink); }
+.dex-meta { display:flex; justify-content:space-between; padding:10px 18px 14px; font-size:11px; color:var(--ink-faint); letter-spacing:.1em; }
+.dex-name a { color:var(--ink); text-decoration:none; border-bottom:1.5px dotted var(--accent); }
+.dex-name a:hover { color:var(--accent); }
+.dex-meta a { color:var(--accent); text-decoration:none; border-bottom:1px dotted var(--accent); white-space:nowrap; }
+.dex-meta a:hover { opacity:.7; }
+.sync-note { font-size:11px; letter-spacing:.24em; color:var(--ink-faint); margin:-26px 0 34px; text-align:right; }
+.sync-note b { color:var(--accent); font-weight:400; }
+
+/* ============ 版本进化树 ============ */
+.tree-wrap { overflow-x:auto; }
+.tree-wrap svg { min-width: 760px; width:100%; display:block; }
+.tree-node { cursor:default; }
+.tree-node circle { fill: var(--card); stroke: var(--ink); stroke-width:1.6; }
+.tree-node.current circle { fill: var(--accent); stroke: var(--accent); }
+.tree-node text { fill: var(--ink); font-size:12px; font-family:"Songti SC","SimSun",serif; }
+.tree-node .ver { font-family:Consolas,monospace; font-weight:bold; }
+.branch { stroke: var(--ink-soft); stroke-width:1.4; fill:none; stroke-dasharray: 5 4; }
+.branch.main { stroke: var(--ink); stroke-dasharray:none; stroke-width:1.8; }
+
+/* ============ Agent 使用手记 ============ */
+.notes { display:grid; gap:22px; }
+.note {
+  display:grid; grid-template-columns: 130px 1fr; gap:20px;
+  border-left:3px solid var(--accent); background:var(--card);
+  padding:20px 24px; position:relative;
+  color:inherit; text-decoration:none;
+  transition:transform .2s ease, border-color .2s ease, background .2s ease;
+}
+.note:hover{
+  border-left-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 6%, var(--card));
+  transform:translateX(2px);
+}
+.note::after{
+  content:"→"; position:absolute; right:20px; top:50%;
+  transform:translateY(-50%); color:var(--accent); opacity:0;
+  font-size:18px; transition:opacity .2s ease, right .2s ease;
+}
+.note:hover::after{ opacity:.85; right:14px; }
+.note .stamp { font-size:12px; color:var(--ink-faint); line-height:1.9; letter-spacing:.08em; }
+.note .stamp .date { font-size:15px; color:var(--accent); letter-spacing:.05em; }
+.note h3 { font-size:17px; margin-bottom:8px; letter-spacing:.05em; }
+.note p { font-size:14px; line-height:1.9; color:var(--ink-soft); }
+.note p b { color:var(--ink); }
+.note .obs {
+  margin-top:10px; font-size:12.5px; border-top:1px dashed var(--line); padding-top:8px;
+  color:var(--ink-faint);
+}
+.note .obs::before { content:"观察结论 → "; color:var(--accent); letter-spacing:.1em; }
+
+/* ============ 软件作品 ============ */
+.works { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:26px; }
+.work .spec { font-size:13.5px; line-height:2; color:var(--ink-soft); }
+.work .spec b { color:var(--ink); }
+.work h3 { font-size:19px; margin:6px 0 10px; letter-spacing:.06em; }
+.work .tags { margin-top:12px; }
+.work .tags span { font-size:11px; border:1px solid var(--ink-faint); padding:2px 10px; margin-right:6px; border-radius:2px; color:var(--ink-soft); }
+.work-repo { margin-top:14px; font-size:11px; letter-spacing:.08em; }
+.work-repo a { color:var(--accent); text-decoration:none; border-bottom:1px dotted var(--accent); }
+.work-repo a:hover { opacity:.7; }
+
+/* ============ 页脚：星表落款 ============ */
+footer { margin-top:100px; border-top:1.5px solid var(--ink); background:var(--paper-2); }
+.colophon { max-width:1060px; margin:0 auto; padding:56px 28px 40px; text-align:center; }
+.colophon svg { margin-bottom:18px; }
+.colophon svg polyline { stroke: var(--ink-faint); stroke-width:.9; stroke-dasharray:2 2; }
+.colophon svg circle { fill: var(--accent); }
+.colophon .cat { font-size:12px; letter-spacing:.45em; color:var(--accent); margin-bottom:12px; }
+.colophon .who { font-size:16px; letter-spacing:.12em; margin-bottom:6px; }
+.colophon .who .hand { font-family:"Segoe Script","Bradley Hand",cursive; font-size:19px; }
+.colophon .meta { font-size:11.5px; color:var(--ink-faint); letter-spacing:.2em; line-height:2.1; }
+.colophon .meta .mono { letter-spacing:.08em; }
+.colophon .love {
+  display:inline-block; margin-top:20px; border:1.2px solid var(--ink); border-radius:999px;
+  padding:6px 22px; font-size:12px; letter-spacing:.3em;
+}
+@media (max-width:640px){
+  .note { grid-template-columns:1fr; }
+  .sec-head .en { display:none; }
+}
+</style>
+</head>
+<body data-mode="night">
+
+<header>
+  <div class="logo"><b>YXM</b>余小莫 · 实验记录</div>
+  <button id="modeToggle" onclick="toggleMode()">☾ 切换昼夜</button>
+</header>
+
+<!-- 侧边星座罗盘 -->
+<nav id="compass">
+  <a href="#dex" data-sec="dex"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="7.2,19.8 9.6,23 12.4,21.1 11.2,17.6 8,16 7.2,19.8" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="7.2" cy="19.8" r="2"/><circle cx="9.6" cy="23" r="2"/><circle cx="12.4" cy="21.1" r="2"/><circle cx="11.2" cy="17.6" r="2"/><circle cx="8" cy="16" r="2"/></svg><span class="clabel">图鉴座 · Skill</span></a>
+  <a href="#tree" data-sec="tree"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="17.6,21.8 20,25 22.8,22.4 21.2,19.2 17.6,21.8" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="17.6" cy="21.8" r="2"/><circle cx="20" cy="25" r="2"/><circle cx="22.8" cy="22.4" r="2"/><circle cx="21.2" cy="19.2" r="2"/></svg><span class="clabel">进化座 · Tree</span></a>
+  <a href="#notes" data-sec="notes"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="27.2,19.2 30,22.4 32.8,19.8 31.2,16.6 27.2,19.2" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="27.2" cy="19.2" r="2"/><circle cx="30" cy="22.4" r="2"/><circle cx="32.8" cy="19.8" r="2"/><circle cx="31.2" cy="16.6" r="2"/></svg><span class="clabel">手记座 · Notes</span></a>
+  <a href="#works" data-sec="works"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="16,13.4 18.8,11.5 22,13.4 16,13.4" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="16" cy="13.4" r="2"/><circle cx="18.8" cy="11.5" r="2"/><circle cx="22" cy="13.4" r="2"/></svg><span class="clabel">装置座 · Works</span></a>
+</nav>
+
+<!-- ================= HERO：星系背景 + 星座导航 ================= -->
+<div id="hero">
+  <canvas id="galaxy"></canvas>
+  <canvas id="sky"></canvas>
+  <div class="star-tip" id="tip"></div>
+  <div class="hero-title">
+    <div class="fig mono">LAB NOTEBOOK · PORTFOLIO EDITION</div>
+    <h1>余小莫的实验室</h1>
+    <p>mRNA-LNP 研究员 × Agent 造物者 · <span class="mono">vibe coding for LOVE</span></p>
+  </div>
+  <div class="hero-hint">点 亮 星 座 · 进 入 章 节 ↓</div>
+</div>
+
+<!-- ================= FIG.1 开源 Skill 图鉴 ================= -->
+<section id="dex">
+  <div class="sec-head">
+    <svg class="mini-const" width="46" height="36" viewBox="0 0 40 32"><polyline points="7.2,19.8 9.6,23 12.4,21.1 11.2,17.6 8,16 7.2,19.8" fill="none"/><circle cx="7.2" cy="19.8" r="1.8"/><circle cx="9.6" cy="23" r="1.8"/><circle cx="12.4" cy="21.1" r="1.8"/><circle cx="11.2" cy="17.6" r="1.8"/><circle cx="8" cy="16" r="1.8"/></svg>
+    <span class="fig-no mono">FIG. 1</span><h2>开源 Skill 图鉴</h2><span class="en">OPEN-SOURCE SKILL DEX</span>
+  </div>
+  <p class="sync-note mono">数据同步自 GITHUB · 已剔除 FORK · 最近观测 <b>2026-09-03</b> · 共 6 件原创 Skill</p>
+  <div class="dex">
+
+    <div class="dex-card">
+      <div class="dex-top"><span class="no mono">No.001</span><span class="rare">★★★ 稀有</span></div>
+      <div class="dex-fig">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="20" y="14" width="60" height="72" rx="2"/>
+          <line x1="30" y1="30" x2="70" y2="30"/><line x1="30" y1="42" x2="70" y2="42"/>
+          <line x1="30" y1="54" x2="58" y2="54"/>
+          <rect x="30" y="62" width="24" height="14" stroke-dasharray="3 2"/>
+          <text x="84" y="26" font-size="9" font-style="italic">10</text>
+          <line x1="80" y1="22" x2="70" y2="22" stroke-dasharray="2 2"/>
+        </svg>
+        <div class="leader mono">FIG. 1A — 标题生成装置剖视图</div>
+      </div>
+      <div class="dex-name"><a href="https://github.com/rcrusoe88-bot/wechat-title-summary" target="_blank" rel="noopener">wechat-title-summary</a></div>
+      <div class="dex-type"><span>文案系</span><span>生成为主</span><span>Shell</span></div>
+      <ul class="dex-moves">
+        <li><b>技能① 三套方案</b> — 报道/叙事/疑问/观点/方法链，差异化标题+摘要</li>
+        <li><b>技能② 字数契约</b> — 标题≤40字、摘要≤120字，自动标注实数字数</li>
+        <li><b>技能③ 封面咏唱</b> — 4套风格 Prompt（学术机制图/手绘/顶刊/粘土）</li>
+      </ul>
+      <div class="dex-meta"><span>语言: Shell · ★ 1</span><span class="repo"><a href="https://github.com/rcrusoe88-bot/wechat-title-summary" target="_blank" rel="noopener">github ↗</a></span></div>
+    </div>
+
+    <div class="dex-card">
+      <div class="dex-top"><span class="no mono">No.002</span><span class="rare">★★ 精良</span></div>
+      <div class="dex-fig">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M28 15 h30 l14 14 v56 h-44 z"/>
+          <path d="M58 15 v14 h14"/>
+          <line x1="36" y1="40" x2="64" y2="40"/><line x1="36" y1="50" x2="64" y2="50"/>
+          <line x1="36" y1="60" x2="56" y2="60"/>
+          <path d="M36 72 h28" stroke-dasharray="3 2"/>
+          <text x="12" y="26" font-size="9" font-style="italic">12</text>
+          <line x1="16" y1="22" x2="28" y2="22" stroke-dasharray="2 2"/>
+        </svg>
+        <div class="leader mono">FIG. 1B — 文档转化引擎正视图</div>
+      </div>
+      <div class="dex-name"><a href="https://github.com/rcrusoe88-bot/wechat-article-html" target="_blank" rel="noopener">wechat-article-html</a></div>
+      <div class="dex-type"><span>转化系</span><span>Python</span></div>
+      <ul class="dex-moves">
+        <li><b>技能① 多源炼金</b> — Word/Markdown/纯文本 → 公众号全内联 HTML</li>
+        <li><b>技能② 十相主题</b> — 10 套主题，兼容旧 orange/blue/nature/morandi</li>
+        <li><b>技能③ 原生字体</b> — --wechat 严格全内联，转后契约自动校验</li>
+      </ul>
+      <div class="dex-meta"><span>语言: Python · ★ 0</span><span class="repo"><a href="https://github.com/rcrusoe88-bot/wechat-article-html" target="_blank" rel="noopener">github ↗</a></span></div>
+    </div>
+
+    <div class="dex-card">
+      <div class="dex-top"><span class="no mono">No.003</span><span class="rare">★★★ 稀有</span></div>
+      <div class="dex-fig">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="16" y="18" width="68" height="64" rx="2"/>
+          <line x1="46" y1="18" x2="46" y2="82"/>
+          <line x1="24" y1="34" x2="40" y2="34"/><line x1="24" y1="44" x2="40" y2="44"/><line x1="24" y1="54" x2="36" y2="54"/>
+          <circle cx="62" cy="48" r="12"/>
+          <path d="M54 60 q8 -10 16 0" />
+          <text x="84" y="24" font-size="9" font-style="italic">16</text>
+          <line x1="80" y1="20" x2="68" y2="24" stroke-dasharray="2 2"/>
+        </svg>
+        <div class="leader mono">FIG. 1C — 封面构图装置</div>
+      </div>
+      <div class="dex-name"><a href="https://github.com/rcrusoe88-bot/wechat-cover-design" target="_blank" rel="noopener">wechat-cover-design</a></div>
+      <div class="dex-type"><span>设计系</span><span>Python</span></div>
+      <ul class="dex-moves">
+        <li><b>技能① 十三主题</b> — 按文章论点（非关键词）选 13 套生物制药视觉</li>
+        <li><b>技能② 稳定版式</b> — 固定左标题区+字体规则，输出不跑版</li>
+        <li><b>技能③ 双路径</b> — 直接生图 或 无字底图+精确叠字规范</li>
+      </ul>
+      <div class="dex-meta"><span>语言: Python · ★ 0</span><span class="repo"><a href="https://github.com/rcrusoe88-bot/wechat-cover-design" target="_blank" rel="noopener">github ↗</a></span></div>
+    </div>
+
+    <div class="dex-card">
+      <div class="dex-top"><span class="no mono">No.004</span><span class="rare">★★★ 稀有</span></div>
+      <div class="dex-fig">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="46" cy="44" r="22"/>
+          <line x1="62" y1="60" x2="80" y2="78" stroke-width="2.5"/>
+          <path d="M38 44 q4 -8 8 0 t8 0" />
+          <circle cx="46" cy="44" r="30" stroke-dasharray="3 3"/>
+          <text x="80" y="24" font-size="9" font-style="italic">14</text>
+          <line x1="76" y1="20" x2="68" y2="24" stroke-dasharray="2 2"/>
+        </svg>
+        <div class="leader mono">FIG. 1D — 文献检索放大装置</div>
+      </div>
+      <div class="dex-name"><a href="https://github.com/rcrusoe88-bot/mrna-cmc-web-search" target="_blank" rel="noopener">mrna-cmc-web-search</a></div>
+      <div class="dex-type"><span>检索系</span><span>CMC</span></div>
+      <ul class="dex-moves">
+        <li><b>技能① 来源发现</b> — mRNA IVT / 靶向 LNP / in vivo CAR-T 定向检索</li>
+        <li><b>技能② 真实核验</b> — 溯源至一手文献，剔除幻觉引用</li>
+        <li><b>技能③ 打包交付</b> — 带证据标签的研究就绪输出（不写文章）</li>
+      </ul>
+      <div class="dex-meta"><span>领域: 生物制药 CMC · ★ 0</span><span class="repo"><a href="https://github.com/rcrusoe88-bot/mrna-cmc-web-search" target="_blank" rel="noopener">github ↗</a></span></div>
+    </div>
+
+    <div class="dex-card">
+      <div class="dex-top"><span class="no mono">No.005</span><span class="rare">★★ 精良</span></div>
+      <div class="dex-fig">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="30" y="12" width="40" height="76" rx="2"/>
+          <circle cx="44" cy="30" r="7"/>
+          <rect x="38" y="40" width="20" height="14" stroke-dasharray="3 2"/>
+          <line x1="38" y1="62" x2="62" y2="62"/><line x1="38" y1="70" x2="62" y2="70"/><line x1="38" y1="78" x2="54" y2="78"/>
+          <text x="16" y="26" font-size="9" font-style="italic">18</text>
+          <line x1="20" y1="22" x2="30" y2="22" stroke-dasharray="2 2"/>
+        </svg>
+        <div class="leader mono">FIG. 1E — 简历生成装置</div>
+      </div>
+      <div class="dex-name"><a href="https://github.com/rcrusoe88-bot/personal-resume" target="_blank" rel="noopener">personal-resume</a></div>
+      <div class="dex-type"><span>工具系</span><span>HTML</span></div>
+      <ul class="dex-moves">
+        <li><b>技能① 双视觉系</b> — 楷体雅致 + 霞鹜致宋（7 套版式）</li>
+        <li><b>技能② 模板矩阵</b> — 8 套模板 × 12 种配色，A4 标准尺寸</li>
+        <li><b>技能③ 隐私优先</b> — 本地处理，分节完整性自动引导</li>
+      </ul>
+      <div class="dex-meta"><span>语言: HTML · ★ 0</span><span class="repo"><a href="https://github.com/rcrusoe88-bot/personal-resume" target="_blank" rel="noopener">github ↗</a></span></div>
+    </div>
+
+    <div class="dex-card">
+      <div class="dex-top"><span class="no mono">No.006</span><span class="rare">★★ 精良</span></div>
+      <div class="dex-fig">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="16" y="22" width="44" height="26" rx="4"/>
+          <path d="M28 48 l0 8 l10 -8"/>
+          <rect x="42" y="54" width="44" height="26" rx="4"/>
+          <path d="M54 80 l0 8 l10 -8"/>
+          <text x="84" y="20" font-size="9" font-style="italic">20</text>
+          <line x1="80" y1="16" x2="68" y2="20" stroke-dasharray="2 2"/>
+        </svg>
+        <div class="leader mono">FIG. 1F — 需求访谈装置</div>
+      </div>
+      <div class="dex-name"><a href="https://github.com/rcrusoe88-bot/ppt-requirements-discovery" target="_blank" rel="noopener">ppt-requirements-discovery</a></div>
+      <div class="dex-type"><span>访谈系</span><span>Codex</span></div>
+      <ul class="dex-moves">
+        <li><b>技能① 多轮访谈</b> — 不投长问卷，每轮只问最关键问题</li>
+        <li><b>技能② 先问为什么</b> — 澄清场景/听众/目标，再谈页数风格</li>
+        <li><b>技能③ 冲突诊断</b> — 主动发现需求矛盾，只做需求发现</li>
+      </ul>
+      <div class="dex-meta"><span>宿主: Codex/Claude · ★ 0</span><span class="repo"><a href="https://github.com/rcrusoe88-bot/ppt-requirements-discovery" target="_blank" rel="noopener">github ↗</a></span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= FIG.2 版本进化树 ================= -->
+<section id="tree">
+  <div class="sec-head">
+    <svg class="mini-const" width="46" height="36" viewBox="0 0 40 32"><polyline points="17.6,21.8 20,25 22.8,22.4 21.2,19.2 17.6,21.8" fill="none"/><circle cx="17.6" cy="21.8" r="1.8"/><circle cx="20" cy="25" r="1.8"/><circle cx="22.8" cy="22.4" r="1.8"/><circle cx="21.2" cy="19.2" r="1.8"/></svg>
+    <span class="fig-no mono">FIG. 2</span><h2>版本进化树</h2><span class="en">EVOLUTION TREE</span>
+  </div>
+  <div class="patent tree-wrap">
+    <div class="figcap mono">FIG. 2 — wechat-cover-design 发育谱系图</div>
+    <svg viewBox="0 0 900 320">
+      <path class="branch main" d="M80 160 H 760"/>
+      <path class="branch" d="M300 160 C 340 160 340 70 380 70 H 560"/>
+      <path class="branch" d="M480 160 C 520 160 520 250 560 250 H 700"/>
+
+      <g class="tree-node"><circle cx="80" cy="160" r="16"/><text x="80" y="200" text-anchor="middle"><tspan class="ver">v1.0</tspan></text><text x="80" y="216" text-anchor="middle">手绘封面雏形</text></g>
+      <g class="tree-node"><circle cx="220" cy="160" r="16"/><text x="220" y="200" text-anchor="middle"><tspan class="ver">v2.0</tspan></text><text x="220" y="216" text-anchor="middle">信息图要素库</text></g>
+      <g class="tree-node"><circle cx="380" cy="70" r="14"/><text x="380" y="42" text-anchor="middle"><tspan class="ver">v3.x</tspan></text><text x="380" y="100" text-anchor="middle" font-size="11">分支：长图物料实验（已合并）</text></g>
+      <g class="tree-node"><circle cx="380" cy="160" r="16"/><text x="380" y="200" text-anchor="middle"><tspan class="ver">v4.0</tspan></text><text x="380" y="216" text-anchor="middle">字体资产内置</text></g>
+      <g class="tree-node"><circle cx="640" cy="250" r="14"/><text x="640" y="288" text-anchor="middle"><tspan class="ver">v4.5</tspan></text><text x="700" y="254" font-size="11">分支：9:16 宣传卡（存续中）</text></g>
+      <g class="tree-node current"><circle cx="560" cy="160" r="16"/><text x="560" y="200" text-anchor="middle"><tspan class="ver">v5.0</tspan></text><text x="560" y="216" text-anchor="middle">host-agnostic 重构</text></g>
+      <g class="tree-node"><circle cx="760" cy="160" r="16" stroke-dasharray="4 3"/><text x="760" y="200" text-anchor="middle"><tspan class="ver">v6.0?</tspan></text><text x="760" y="216" text-anchor="middle">GitHub 开源版</text></g>
+
+      <text x="80" y="40" font-size="11" fill="currentColor" opacity=".55" font-style="italic">主干 = main branch</text>
+      <text x="80" y="58" font-size="11" fill="currentColor" opacity=".55" font-style="italic">虚线 = experimental branch</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ================= FIG.3 Agent 使用手记 ================= -->
+<section id="notes">
+  <div class="sec-head">
+    <svg class="mini-const" width="46" height="36" viewBox="0 0 40 32"><polyline points="27.2,19.2 30,22.4 32.8,19.8 31.2,16.6 27.2,19.2" fill="none"/><circle cx="27.2" cy="19.2" r="1.8"/><circle cx="30" cy="22.4" r="1.8"/><circle cx="32.8" cy="19.8" r="1.8"/><circle cx="31.2" cy="16.6" r="1.8"/></svg>
+    <span class="fig-no mono">FIG. 3</span><h2>Agent 使用手记</h2><span class="en">FIELD NOTES ON AGENTS</span>
+  </div>
+  <div class="notes">
+
+    <a class="note" href="notes.html#art-001">
+      <div class="stamp"><div class="date mono">2026-08-20</div><div>环境: WorkBuddy + bsk</div><div>样本: 微信后台</div></div>
+      <div>
+        <h3>浏览器自动化：DOM 文本比截图可靠</h3>
+        <p>让 Agent 抓公众号后台数据，<b>canvas 图表页截图持续失败</b>，改用 evaluate 直读 <span class="mono">document.body.innerText</span> 一次拿到全部数字。SPA 路由点击不触发时，先取真实 href 再 navigate。</p>
+        <div class="obs">Agent 操作网页，「读 DOM」优先于「看截图」；视觉是给人的，结构是给 Agent 的。</div>
+      </div>
+    </a>
+
+    <a class="note" href="notes.html#art-002">
+      <div class="stamp"><div class="date mono">2026-08-18</div><div>环境: python-docx</div><div>样本: Elsevier PDF</div></div>
+      <div>
+        <h3>一次图片嵌入失败的解剖</h3>
+        <p>期刊 PDF 提取的 JPEG 嵌入 docx 报 <span class="mono">UnrecognizedImageError</span>。根因：Adobe APP14 头 <span class="mono">ffd8 ffee</span>（CMYK），python-docx 只认 JFIF。PIL 转存标准 JPEG 即愈。</p>
+        <div class="obs">报错信息只指到门口，真正的根因常在文件头的两个字节里。</div>
+      </div>
+    </a>
+
+    <a class="note" href="notes.html#art-003">
+      <div class="stamp"><div class="date mono">2026-08-12</div><div>环境: Windows + Git Bash</div><div>样本: GitHub raw</div></div>
+      <div>
+        <h3>吊销检查引发的安装悬案</h3>
+        <p>curl 抓 raw.githubusercontent 反复报 <span class="mono">CRYPT_E_REVOCATION_OFFLINE</span>。换托管 Python 的 urllib（OpenSSL 不做 Windows 吊销检查）一次通过。</p>
+        <div class="obs">同一份代码，换一条 TLS 栈，结论完全不同——排查时先怀疑环境，再怀疑自己。</div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ================= FIG.4 软件作品 ================= -->
+<section id="works">
+  <div class="sec-head">
+    <svg class="mini-const" width="46" height="36" viewBox="0 0 40 32"><polyline points="16,13.4 18.8,11.5 22,13.4 16,13.4" fill="none"/><circle cx="16" cy="13.4" r="1.8"/><circle cx="18.8" cy="11.5" r="1.8"/><circle cx="22" cy="13.4" r="1.8"/></svg>
+    <span class="fig-no mono">FIG. 4</span><h2>在研装置</h2><span class="en">APPARATUS UNDER DEVELOPMENT</span>
+  </div>
+  <div class="works">
+
+    <div class="patent work">
+      <div class="figcap mono">FIG. 4A</div>
+      <h3><span class="ref-num">20</span>Materia ERP 物料管理系统</h3>
+      <p class="spec">面向 <b>mRNA/LNP 生产</b> 的物料出入库、批次追溯与效期管理。以实验记录本的严谨对待每一支原料——批号即血脉，效期即戒律。</p>
+      <div class="tags"><span>React</span><span>NestJS</span><span>PostgreSQL</span><span>腾讯云</span></div>
+      <div class="work-repo"><a href="https://github.com/rcrusoe88-bot/wsj-erp-system" target="_blank" rel="noopener">源码 ↗ github.com/rcrusoe88-bot/wsj-erp-system</a></div>
+    </div>
+
+    <div class="patent work">
+      <div class="figcap mono">FIG. 4B</div>
+      <h3><span class="ref-num">22</span>sci-library 文献分发小程序</h3>
+      <p class="spec">SCI 文献每日滚动的微信小程序，<b>微信云开发免费版</b>架构。把文献情报 Agent 的产出，装进每个科研人的口袋。</p>
+      <div class="tags"><span>微信小程序</span><span>云开发</span><span>文献情报</span></div>
+    </div>
+
+    <div class="patent work">
+      <div class="figcap mono">FIG. 4C</div>
+      <h3><span class="ref-num">24</span>yuxiaomo-ai-notes</h3>
+      <p class="spec">AI 学习笔记静态站，<b>Next.js 静态导出 + GitHub Pages</b>。所有与 Agent 协作的心得，先在这里沉淀，再流向图鉴与手记。</p>
+      <div class="tags"><span>Next.js</span><span>静态博客</span><span>GitHub Pages</span></div>
+      <div class="work-repo"><a href="https://github.com/rcrusoe88-bot/yuxiaomo-ai-notes" target="_blank" rel="noopener">源码 ↗ github.com/rcrusoe88-bot/yuxiaomo-ai-notes</a></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= 页脚：星表落款 ================= -->
+<footer>
+  <div class="colophon">
+    <svg width="120" height="56" viewBox="0 0 120 56">
+      <polyline points="18,32 24,40 31,35 28,26 20,24 18,32" fill="none"/>
+      <circle cx="18" cy="32" r="2.4"/><circle cx="24" cy="40" r="2.4"/><circle cx="31" cy="35" r="2.4"/><circle cx="28" cy="26" r="2.4"/><circle cx="20" cy="24" r="2.4"/>
+      <polyline points="56,30 62,40 68,32 64,24 56,30" fill="none"/>
+      <circle cx="56" cy="30" r="2.4"/><circle cx="62" cy="40" r="2.4"/><circle cx="68" cy="32" r="2.4"/><circle cx="64" cy="24" r="2.4"/>
+      <polyline points="92,24 97,14 102,24 92,24" fill="none"/>
+      <circle cx="92" cy="24" r="2.4"/><circle cx="97" cy="14" r="2.4"/><circle cx="102" cy="24" r="2.4"/>
+    </svg>
+    <div class="cat">星 表 落 款 · STAR CATALOGUE</div>
+    <div class="who">观测者 <span class="hand">余小莫</span></div>
+    <div class="meta">
+      编号 <span class="mono">YXM-2026-001</span> · 初次观测 <span class="mono" id="signDate"></span><br>
+      坐标 <span class="mono">github.com/rcrusoe88-bot</span> · 本星表持续生长
+    </div>
+    <div class="love mono">vibe coding for LOVE</div>
+  </div>
+</footer>
+
+<script>
+/* ============ 昼夜节律 ============ */
+function circadian() {
+  const h = new Date().getHours();
+  const night = (h >= 19 || h < 6);
+  document.body.dataset.mode = night ? 'night' : 'day';
+  updateBtn();
+}
+function toggleMode() {
+  document.body.dataset.mode = document.body.dataset.mode === 'night' ? 'day' : 'night';
+  updateBtn();
+}
+function updateBtn() {
+  document.getElementById('modeToggle').textContent =
+    document.body.dataset.mode === 'night' ? '☀ 切换白昼' : '☾ 切换黑夜';
+  if (window.galaxySetLight) window.galaxySetLight(document.body.dataset.mode === 'day');
+}
+circadian();
+document.getElementById('signDate').textContent =
+  new Date().toISOString().slice(0,10).replace(/-/g,'.');
+
+/* 星座罗盘 scroll-spy */
+const compassLinks = document.querySelectorAll('#compass a');
+const spy = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (en.isIntersecting) {
+      compassLinks.forEach(a => a.classList.toggle('active', a.dataset.sec === en.target.id));
+    }
+  });
+}, { rootMargin: '-40% 0px -50% 0px' });
+['dex','tree','notes','works'].forEach(id => spy.observe(document.getElementById(id)));
+
+/* ============ 星座导航 ============ */
+const canvas = document.getElementById('sky');
+const ctx = canvas.getContext('2d');
+const tip = document.getElementById('tip');
+const hero = document.getElementById('hero');
+
+/* 星座定义：三维星群（局部坐标 [x,y,z]，z 为深度），绕 Y 轴缓慢自转 + 透视投影 */
+const constellations = [
+  { name:'图鉴座 · Skill Dex', target:'dex', c:[.24,.62], spin:.30, phase:0,
+    stars:[[-.9,-.1,.3],[-.3,.7,-.4],[.5,.4,.6],[.3,-.5,-.7],[-.6,-.8,.1]] },
+  { name:'进化座 · Evolution', target:'tree', c:[.50,.70], spin:-.24, phase:2.1,
+    stars:[[-.7,-.2,.5],[0,.8,-.2],[.7,.1,.4],[.1,-.6,-.6]] },
+  { name:'手记座 · Field Notes', target:'notes', c:[.76,.60], spin:.27, phase:4.0,
+    stars:[[-.8,-.2,-.3],[0,.7,.5],[.8,0,-.5],[.2,-.7,.4]] },
+  { name:'装置座 · Apparatus', target:'works', c:[.47,.40], spin:-.34, phase:1.2,
+    stars:[[-.6,.2,.5],[0,-.5,-.5],[.6,.2,.3]] },
+];
+let hoverStar = null, W, H, t0 = performance.now();
+
+function resize(){ W = canvas.width = hero.clientWidth; H = canvas.height = hero.clientHeight; }
+window.addEventListener('resize', resize); resize();
+
+/* 性能优化：hero 不在视口时跳过星座绘制，释放主线程/GPU 给滚动合成 */
+let heroVisible = true;
+new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 })
+  .observe(hero);
+
+/* 三维 → 二维透视投影：远小近大、远淡近亮 */
+const TILT = 0.35;
+function project(c, s, t){
+  const R = Math.min(W, H) * 0.14;
+  const ang = t * c.spin + c.phase;
+  const cosA = Math.cos(ang), sinA = Math.sin(ang);
+  /* 绕 Y 轴自转 */
+  const x = s[0]*cosA + s[2]*sinA;
+  let   z = -s[0]*sinA + s[2]*cosA;
+  /* 绕 X 轴微倾，制造俯瞰感 */
+  const y = s[1]*Math.cos(TILT) - z*Math.sin(TILT)*0.5;
+  z = s[1]*Math.sin(TILT)*0.5 + z*Math.cos(TILT);
+  const persp = 1 / (1 + z * 0.45);
+  return { x: c.c[0]*W + x*R*persp, y: c.c[1]*H + y*R*persp, s: persp, z };
+}
+
+function draw(now){
+  requestAnimationFrame(draw);
+  if (!heroVisible) return;
+  const t = (now - t0)/1000;
+  ctx.clearRect(0,0,W,H);
+  const night = document.body.dataset.mode === 'night';
+  const starCol = night ? '#ffe9b8' : '#5a4f3e';
+
+  for (const c of constellations){
+    const pts = c.stars.map(s => project(c, s, t));
+    c._screen = pts;
+
+    /* 画家算法：线段与星体统一按深度排序，远先近后——近处的星会自然遮挡背后的连线 */
+    const items = [];
+    for (let i = 0; i < pts.length - 1; i++){
+      items.push({ kind:'seg', a:pts[i], b:pts[i+1], z:(pts[i].z + pts[i+1].z) / 2 });
+    }
+    pts.forEach((p, i) => items.push({ kind:'star', p, i, z:p.z }));
+    items.sort((m, n) => n.z - m.z);   /* z 大 = 远，先画 */
+
+    for (const it of items){
+      if (it.kind === 'seg'){
+        const a = it.a, b = it.b;
+        const depth = (a.s + b.s) / 2;              /* 近处 ≈1.1 远处 ≈0.8 */
+        const alpha = (night ? .34 : .28) * depth;
+        ctx.strokeStyle = night
+          ? `rgba(255,233,184,${alpha})`
+          : `rgba(90,79,62,${alpha})`;
+        ctx.lineWidth = 1 * depth;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        const p = it.p, i = it.i;
+        const pulse = (2.4 + .8*Math.sin(t*2 + i + c.phase)) * p.s;
+        const isHover = hoverStar && hoverStar.c === c;
+        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y, pulse*5);
+        g.addColorStop(0, night
+          ? `rgba(255,233,184,${.5*p.s})`
+          : `rgba(90,79,62,${.25*p.s})`);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x,p.y, pulse*5, 0, 7); ctx.fill();
+        /* 星体实心不透明——这是遮挡关系成立的关键 */
+        ctx.fillStyle = night ? '#010204' : '#f6f1e6';
+        ctx.beginPath(); ctx.arc(p.x,p.y, pulse + 1.2, 0, 7); ctx.fill();
+        ctx.fillStyle = starCol;
+        ctx.globalAlpha = Math.min(1, .55 + .45*p.s);
+        ctx.beginPath(); ctx.arc(p.x,p.y, isHover ? pulse+1.6 : pulse, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+}
+requestAnimationFrame(draw);
+
+function findStar(e){
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  for (const c of constellations){
+    if (!c._screen) continue;
+    for (const p of c._screen){
+      if (Math.hypot(mx-p.x, my-p.y) < 26) return { c, p };
+    }
+  }
+  return null;
+}
+canvas.addEventListener('mousemove', e => {
+  hoverStar = findStar(e);
+  canvas.style.cursor = hoverStar ? 'pointer' : 'default';
+  if (hoverStar){
+    tip.textContent = hoverStar.c.name;
+    tip.style.left = hoverStar.p.x + 'px';
+    tip.style.top = hoverStar.p.y + 'px';
+    tip.style.opacity = 1;
+  } else tip.style.opacity = 0;
+});
+canvas.addEventListener('click', e => {
+  const hit = findStar(e);
+  if (hit) document.getElementById(hit.c.target).scrollIntoView({behavior:'smooth'});
+});
+canvas.addEventListener('mouseleave', () => { tip.style.opacity = 0; hoverStar = null; });
+
+/* ============ WebGL 星系背景（复刻 reactbits.dev Galaxy，原生 WebGL 无依赖） ============ */
+(function(){
+  const gc = document.getElementById('galaxy');
+  const gl = gc.getContext('webgl', { alpha:true, premultipliedAlpha:false });
+  if (!gl) return;
+
+  const VERT = `
+attribute vec2 uv;
+attribute vec2 position;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position, 0, 1);
+}`;
+
+  const FRAG = `
+precision highp float;
+
+uniform float uTime;
+uniform vec3 uResolution;
+uniform vec2 uFocal;
+uniform vec2 uRotation;
+uniform float uStarSpeed;
+uniform float uDensity;
+uniform float uHueShift;
+uniform float uSpeed;
+uniform vec2 uMouse;
+uniform float uGlowIntensity;
+uniform float uSaturation;
+uniform bool uMouseRepulsion;
+uniform float uTwinkleIntensity;
+uniform float uRotationSpeed;
+uniform float uRepulsionStrength;
+uniform float uMouseActiveFactor;
+uniform float uAutoCenterRepulsion;
+uniform bool uTransparent;
+uniform float uLightMode;
+
+varying vec2 vUv;
+
+#define NUM_LAYER 4.0
+#define STAR_COLOR_CUTOFF 0.2
+#define MAT45 mat2(0.7071, -0.7071, 0.7071, 0.7071)
+#define PERIOD 3.0
+
+float Hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float tri(float x) {
+  return abs(fract(x) * 2.0 - 1.0);
+}
+
+float tris(float x) {
+  float t = fract(x);
+  return 1.0 - smoothstep(0.0, 1.0, abs(2.0 * t - 1.0));
+}
+
+float trisn(float x) {
+  float t = fract(x);
+  return 2.0 * (1.0 - smoothstep(0.0, 1.0, abs(2.0 * t - 1.0))) - 1.0;
+}
+
+vec3 hsv2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+float Star(vec2 uv, float flare) {
+  float d = length(uv);
+  /* 锐利星核（替代原 1/d 光晕）：小半径、陡边缘、无雾状辉光 */
+  float m = 1.6 * smoothstep(0.032, 0.008, d);
+  /* 十字光芒保留 */
+  float rays = smoothstep(0.0, 1.0, 1.0 - abs(uv.x * uv.y * 1000.0));
+  m += rays * flare * uGlowIntensity;
+  uv *= MAT45;
+  rays = smoothstep(0.0, 1.0, 1.0 - abs(uv.x * uv.y * 1000.0));
+  m += rays * 0.3 * flare * uGlowIntensity;
+  m *= smoothstep(1.0, 0.2, d);
+  return m;
+}
+
+vec3 StarLayer(vec2 uv) {
+  vec3 col = vec3(0.0);
+  vec2 gv = fract(uv) - 0.5;
+  vec2 id = floor(uv);
+
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 offset = vec2(float(x), float(y));
+      vec2 si = id + vec2(float(x), float(y));
+      float seed = Hash21(si);
+      float size = fract(seed * 345.32);
+      float glossLocal = tri(uStarSpeed / (PERIOD * seed + 1.0));
+      float flareSize = smoothstep(0.9, 1.0, size) * glossLocal;
+
+      float red = smoothstep(STAR_COLOR_CUTOFF, 1.0, Hash21(si + 1.0)) + STAR_COLOR_CUTOFF;
+      float blu = smoothstep(STAR_COLOR_CUTOFF, 1.0, Hash21(si + 3.0)) + STAR_COLOR_CUTOFF;
+      float grn = min(red, blu) * seed;
+      vec3 base = vec3(red, grn, blu);
+
+      float hue = atan(base.g - base.r, base.b - base.r) / (2.0 * 3.14159) + 0.5;
+      hue = fract(hue + uHueShift / 360.0);
+      float sat = length(base - vec3(dot(base, vec3(0.299, 0.587, 0.114)))) * uSaturation;
+      float val = max(max(base.r, base.g), base.b);
+      base = hsv2rgb(vec3(hue, sat, val));
+
+      vec2 pad = vec2(tris(seed * 34.0 + uTime * uSpeed / 10.0), tris(seed * 38.0 + uTime * uSpeed / 30.0)) - 0.5;
+
+      float star = Star(gv - offset - pad, flareSize);
+      vec3 color = base;
+
+      float twinkle = trisn(uTime * uSpeed + seed * 6.2831) * 0.5 + 1.0;
+      twinkle = mix(1.0, twinkle, uTwinkleIntensity);
+      star *= twinkle;
+
+      col += star * size * color;
+    }
+  }
+  return col;
+}
+
+void main() {
+  vec2 focalPx = uFocal * uResolution.xy;
+  vec2 uv = (vUv * uResolution.xy - focalPx) / uResolution.y;
+
+  vec2 mouseNorm = uMouse - vec2(0.5);
+
+  if (uAutoCenterRepulsion > 0.0) {
+    vec2 centerUV = vec2(0.0, 0.0);
+    float centerDist = length(uv - centerUV);
+    vec2 repulsion = normalize(uv - centerUV) * (uAutoCenterRepulsion / (centerDist + 0.1));
+    uv += repulsion * 0.05;
+  } else if (uMouseRepulsion) {
+    vec2 mousePosUV = (uMouse * uResolution.xy - focalPx) / uResolution.y;
+    float mouseDist = length(uv - mousePosUV);
+    vec2 repulsion = normalize(uv - mousePosUV) * (uRepulsionStrength / (mouseDist + 0.1));
+    uv += repulsion * 0.05 * uMouseActiveFactor;
+  } else {
+    vec2 mouseOffset = mouseNorm * 0.1 * uMouseActiveFactor;
+    uv += mouseOffset;
+  }
+
+  float autoRotAngle = uTime * uRotationSpeed;
+  mat2 autoRot = mat2(cos(autoRotAngle), -sin(autoRotAngle), sin(autoRotAngle), cos(autoRotAngle));
+  uv = autoRot * uv;
+
+  uv = mat2(uRotation.x, -uRotation.y, uRotation.y, uRotation.x) * uv;
+
+  vec3 col = vec3(0.0);
+
+  for (float i = 0.0; i < 1.0; i += 1.0 / NUM_LAYER) {
+    float depth = fract(i + uStarSpeed * uSpeed);
+    float scale = mix(20.0 * uDensity, 0.5 * uDensity, depth);
+    float fade = depth * smoothstep(1.0, 0.9, depth);
+    col += StarLayer(uv * scale + i * 453.32) * fade;
+  }
+
+  if (uLightMode > 0.5) {
+    float energy = max(max(col.r, col.g), col.b);
+    float coverage = clamp(smoothstep(0.0, 0.42, energy) * 0.92, 0.0, 0.92);
+    vec3 ink = clamp(col * 0.48, 0.0, 0.82);
+    gl_FragColor = vec4(mix(vec3(1.0), ink, coverage), 1.0);
+  } else if (uTransparent) {
+    float alpha = length(col);
+    alpha = smoothstep(0.0, 0.3, alpha);
+    alpha = min(alpha, 1.0);
+    gl_FragColor = vec4(col, alpha);
+  } else {
+    gl_FragColor = vec4(col, 1.0);
+  }
+}`;
+
+  function compile(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(s)); return null;
+    }
+    return s;
+  }
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) return;
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(prog)); return; }
+  gl.useProgram(prog);
+
+  /* 全屏三角形（同 OGL Triangle） */
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1,-1, 0,0,   3,-1, 2,0,   -1,3, 0,2
+  ]), gl.STATIC_DRAW);
+  const locPos = gl.getAttribLocation(prog, 'position');
+  const locUv  = gl.getAttribLocation(prog, 'uv');
+  gl.enableVertexAttribArray(locPos);
+  gl.vertexAttribPointer(locPos, 2, gl.FLOAT, false, 16, 0);
+  gl.enableVertexAttribArray(locUv);
+  gl.vertexAttribPointer(locUv, 2, gl.FLOAT, false, 16, 8);
+
+  const U = {};
+  ['uTime','uResolution','uFocal','uRotation','uStarSpeed','uDensity','uHueShift','uSpeed',
+   'uMouse','uGlowIntensity','uSaturation','uMouseRepulsion','uTwinkleIntensity','uRotationSpeed',
+   'uRepulsionStrength','uMouseActiveFactor','uAutoCenterRepulsion','uTransparent','uLightMode']
+    .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.clearColor(0,0,0,0);
+
+  /* 昼夜异色状态（必须先声明，下面的初始化要用）：黑夜纯白星(sat 0) / 白昼低饱和暖琥珀(sat .35, hue 30) */
+  const isDay0 = document.body.dataset.mode === 'day';
+  let hueTarget = isDay0 ? 30 : 240, hueCurrent = hueTarget;
+  let satTarget = isDay0 ? 0.35 : 0.0, satCurrent = satTarget;
+
+  /* 参数：采用你选定的 reactbits 配置 */
+  const STAR_SPEED = 0.5, SPEED = 1.0;
+  gl.uniform2f(U.uFocal, 0.5, 0.5);
+  gl.uniform2f(U.uRotation, 1.0, 0.0);
+  gl.uniform1f(U.uDensity, 0.6);
+  gl.uniform1f(U.uHueShift, hueCurrent);
+  gl.uniform1f(U.uSpeed, SPEED);
+  gl.uniform1f(U.uGlowIntensity, 0.45);
+  gl.uniform1i(U.uMouseRepulsion, 1);
+  gl.uniform1f(U.uTwinkleIntensity, 0.3);
+  gl.uniform1f(U.uRotationSpeed, 0.1);
+  gl.uniform1f(U.uRepulsionStrength, 2.0);
+  gl.uniform1f(U.uAutoCenterRepulsion, 0.0);
+  gl.uniform1i(U.uTransparent, 1);
+  gl.uniform1f(U.uLightMode, document.body.dataset.mode === 'day' ? 1 : 0);
+
+  window.galaxySetLight = function(isLight){
+    gl.uniform1f(U.uLightMode, isLight ? 1 : 0);
+    hueTarget = isLight ? 30 : 240;
+    satTarget = isLight ? 0.35 : 0.0;
+  };
+
+  function resizeGalaxy(){
+    gc.width = hero.clientWidth;
+    gc.height = hero.clientHeight;
+    gl.viewport(0, 0, gc.width, gc.height);
+    gl.uniform3f(U.uResolution, gc.width, gc.height, gc.width / gc.height);
+  }
+  window.addEventListener('resize', resizeGalaxy);
+  resizeGalaxy();
+
+  /* 鼠标平滑追踪（挂在 hero 上，不影响上层星座画布的交互） */
+  const target = { x:.5, y:.5 }, smooth = { x:.5, y:.5 };
+  let targetActive = 0, smoothActive = 0;
+  hero.addEventListener('mousemove', e => {
+    const r = hero.getBoundingClientRect();
+    target.x = (e.clientX - r.left) / r.width;
+    target.y = 1.0 - (e.clientY - r.top) / r.height;
+    targetActive = 1.0;
+  });
+  hero.addEventListener('mouseleave', () => { targetActive = 0; });
+
+  /* 性能优化：hero 离开视口时暂停 WebGL 渲染，把 GPU 留给滚动合成 */
+  let galaxyVisible = true;
+  new IntersectionObserver(es => { galaxyVisible = es[0].isIntersecting; }, { threshold: 0 })
+    .observe(document.getElementById('hero'));
+
+  function frame(t){
+    requestAnimationFrame(frame);
+    if (!galaxyVisible) return;
+    const sec = t * 0.001;
+    hueCurrent += (hueTarget - hueCurrent) * 0.03;
+    satCurrent += (satTarget - satCurrent) * 0.03;
+    gl.uniform1f(U.uHueShift, hueCurrent);
+    gl.uniform1f(U.uSaturation, satCurrent);
+    gl.uniform1f(U.uTime, sec);
+    gl.uniform1f(U.uStarSpeed, (sec * STAR_SPEED) / 10.0);
+    smooth.x += (target.x - smooth.x) * 0.05;
+    smooth.y += (target.y - smooth.y) * 0.05;
+    smoothActive += (targetActive - smoothActive) * 0.05;
+    gl.uniform2f(U.uMouse, smooth.x, smooth.y);
+    gl.uniform1f(U.uMouseActiveFactor, smoothActive);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

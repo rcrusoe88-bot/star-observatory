@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>手记座 · Agent 使用手记 — 余小莫星表</title>
+<style>
+  /* ===== 主题令牌（与作品集主站一致） ===== */
+  :root{
+    --bg:#f6f1e6; --paper:#fbf8f0; --paper-2:#f1ebdc;
+    --ink:#23211c; --ink-soft:#4a463c; --ink-faint:#8c8576;
+    --line:#d8cfba; --accent:#c8923a;
+    --sky: radial-gradient(ellipse at 50% 120%, #070a14 0%, #010204 70%);
+  }
+  body[data-mode="night"]{
+    --bg:#0a0d16; --paper:#101522; --paper-2:#0c1019;
+    --ink:#e9e3d4; --ink-soft:#b8b09c; --ink-faint:#6b6557;
+    --line:#2a2e3c; --accent:#d9a45b;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Songti SC","SimSun","Noto Serif SC",Georgia,serif;
+    line-height:1.75; transition:background .6s, color .6s;
+  }
+  .mono{ font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace; }
+  a{ color:var(--accent); }
+
+  /* ===== 顶栏 ===== */
+  header{
+    position:sticky; top:0; z-index:50; display:flex; justify-content:space-between; align-items:center;
+    padding:13px 28px; background:color-mix(in srgb, var(--paper) 92%, transparent);
+    border-bottom:1px solid var(--line); backdrop-filter:none;
+  }
+  .logo{ font-size:14px; letter-spacing:.12em; }
+  .logo b{ border:1.5px solid var(--ink); padding:2px 8px; margin-right:10px; }
+  .nav-right{ display:flex; align-items:center; gap:14px; }
+  .back{ font-size:12px; letter-spacing:.14em; text-decoration:none; color:var(--ink-soft); border:1.2px solid var(--ink-faint); padding:5px 12px; border-radius:999px; }
+  #modeToggle{ cursor:pointer; border:1.5px solid var(--ink); background:none; color:var(--ink); padding:6px 14px; font-size:12px; letter-spacing:.15em; border-radius:999px; }
+
+  /* ===== 手记座 Hero ===== */
+  .notes-hero{ position:relative; padding:70px 28px 50px; text-align:center; border-bottom:2px solid var(--line); overflow:hidden; }
+  body[data-mode="night"] .notes-hero{ background:var(--sky); }
+  .const-svg{ display:block; margin:0 auto 18px; }
+  .const-svg line{ stroke:var(--accent); stroke-width:.8; stroke-dasharray:2 2; }
+  .const-svg circle{ fill:var(--accent); }
+  .notes-hero h1{ margin:0; font-size:clamp(26px,4vw,40px); letter-spacing:.14em; }
+  .notes-hero .en{ margin-top:8px; font-size:11px; letter-spacing:.4em; color:var(--ink-faint); }
+  .notes-hero .sub{ margin-top:18px; max-width:640px; margin-left:auto; margin-right:auto; color:var(--ink-soft); font-size:14px; }
+
+  /* ===== 容器 ===== */
+  .wrap{ max-width:860px; margin:0 auto; padding:48px 28px 20px; }
+
+  /* ===== 手记索引 ===== */
+  .idx-h{ display:flex; align-items:baseline; gap:14px; border-bottom:2px solid var(--ink); padding-bottom:10px; margin:40px 0 26px; }
+  .idx-h .fig{ font-size:12px; letter-spacing:.25em; color:var(--accent); }
+  .idx-h h2{ margin:0; font-size:21px; letter-spacing:.08em; }
+  .note-card{
+    position:relative; border:1.5px solid var(--line); background:var(--paper);
+    padding:22px 24px; margin-bottom:18px; border-radius:3px; text-decoration:none; color:inherit; display:block;
+    transition:.2s;
+  }
+  .note-card:hover{ border-color:var(--accent); transform:translateY(-2px); }
+  .note-card .meta{ display:flex; gap:16px; flex-wrap:wrap; font-size:11px; letter-spacing:.12em; color:var(--ink-faint); margin-bottom:8px; }
+  .note-card h3{ margin:0 0 8px; font-size:18px; letter-spacing:.04em; }
+  .note-card p{ margin:0; color:var(--ink-soft); font-size:14px; }
+  .tag{ display:inline-block; font-size:10px; letter-spacing:.1em; border:1px solid var(--accent); color:var(--accent); padding:1px 8px; border-radius:999px; margin-left:8px; }
+
+  /* ===== 文章模板阅读区 ===== */
+  .reader{ margin-top:60px; border-top:2px solid var(--ink); padding-top:30px; }
+  .reader .tmpl-note{ font-size:12px; color:var(--accent); letter-spacing:.08em; margin-bottom:18px; }
+  article{ max-width:720px; }
+  article h1{ font-size:clamp(24px,3.5vw,34px); letter-spacing:.06em; margin:0 0 10px; }
+  .art-meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12px; letter-spacing:.1em; color:var(--ink-faint); border-bottom:1px dashed var(--line); padding-bottom:14px; margin-bottom:26px; }
+  article h2{ font-size:20px; letter-spacing:.05em; margin:34px 0 12px; border-left:4px solid var(--accent); padding-left:12px; }
+  article p{ margin:0 0 16px; }
+  article blockquote{ margin:20px 0; padding:14px 20px; border-left:3px solid var(--accent); background:var(--paper-2); color:var(--ink-soft); font-style:italic; }
+  article pre{ background:var(--paper-2); border:1px solid var(--line); border-radius:4px; padding:16px; overflow:auto; font-family:"SFMono-Regular",Consolas,monospace; font-size:13px; line-height:1.6; }
+  article code{ font-family:"SFMono-Regular",Consolas,monospace; font-size:.92em; background:var(--paper-2); padding:1px 5px; border-radius:3px; }
+  .placeholder{ color:var(--ink-faint); font-style:italic; }
+
+  /* ===== 星表落款 ===== */
+  footer{ margin-top:90px; border-top:2px solid var(--line); background:var(--paper-2); }
+  .colophon{ max-width:860px; margin:0 auto; padding:44px 28px 30px; text-align:center; }
+  .colophon svg{ display:block; margin:0 auto 16px; }
+  .colophon svg line{ stroke:var(--ink-faint); stroke-width:.8; stroke-dasharray:2 2; }
+  .colophon svg circle{ fill:var(--accent); }
+  .colophon .obs{ font-family:"Segoe Script","Bradley Hand",cursive; font-size:20px; color:var(--ink); }
+  .colophon .no{ font-size:11px; letter-spacing:.3em; color:var(--ink-faint); margin-top:10px; }
+  .colophon .badge{ display:inline-block; margin-top:16px; font-size:11px; letter-spacing:.2em; border:1px solid var(--accent); color:var(--accent); padding:5px 16px; border-radius:999px; }
+
+  /* ===== 单篇锁定模式（URL 含 #art-xxx 时自动启用） ===== */
+  .back-idx{
+    display:inline-block; margin-bottom:18px;
+    font-size:12px; letter-spacing:.14em; text-decoration:none;
+    color:var(--ink-soft); border:1.2px solid var(--ink-faint);
+    padding:4px 12px; border-radius:999px;
+  }
+  .back-idx:hover{ border-color:var(--accent); color:var(--accent); }
+
+  /* 当某篇文章被 URL 锚定：收起索引 / 模板提示 / 其他文章，但保留 hero（含静态手记座星座） */
+  body:has(.art:target) .idx-h,
+  body:has(.art:target) .note-card,
+  body:has(.art:target) .tmpl-note {
+    display:none !important;
+  }
+  body:has(.art:target) .art { display:none; }
+  body:has(.art:target) .art:target { display:block; }
+  /* 单篇模式下 article 之间不再需要分隔间距 */
+  body:has(.art:target) .art:target { margin-top:0 !important; }
+</style>
+</head>
+<body data-mode="night">
+
+<header>
+  <div class="logo"><b>余</b>余小莫 · 星表</div>
+  <div class="nav-right">
+    <a class="back" href="index.html">← 返回星表</a>
+    <button id="modeToggle">☀ 切换白昼</button>
+  </div>
+</header>
+
+<!-- ============ 手记座 Hero ============ -->
+<div class="notes-hero">
+  <!-- 手记座 · Field Notes：四星连线不闭环 -->
+  <svg class="const-svg" width="120" height="90" viewBox="0 0 100 70">
+    <line x1="20" y1="50" x2="50" y2="14"/>
+    <line x1="50" y1="14" x2="82" y2="48"/>
+    <line x1="82" y1="48" x2="60" y2="62"/>
+    <circle cx="20" cy="50" r="3.4"/>
+    <circle cx="50" cy="14" r="4"/>
+    <circle cx="82" cy="48" r="3"/>
+    <circle cx="60" cy="62" r="3.4"/>
+  </svg>
+  <h1>手记座 · Agent 使用手记</h1>
+  <div class="en">FIELD NOTES ON AGENTS</div>
+  <p class="sub">把与 Agent 协作时的真实排障、判断与反直觉结论，逐条记下。这里存放的是过程，不是结论。</p>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ 手记索引（占位模板，待你加载真实文章） ============ -->
+  <div class="idx-h">
+    <span class="fig mono">FIG. 3</span><h2>手记索引</h2>
+  </div>
+
+  <!-- 复制下面整块 .note-card 即可新增一条索引；href 指向对应文章锚点 -->
+  <a class="note-card" href="#art-001">
+    <div class="meta"><span class="mono">2026-08-20</span><span>环境: WorkBuddy + bsk</span><span>样本: 微信后台</span></div>
+    <h3>浏览器自动化：DOM 文本比截图可靠<span class="tag">模板</span></h3>
+    <p class="placeholder">此处为占位摘要——替换为你手记的导语。点击进入阅读全文。</p>
+  </a>
+
+  <a class="note-card" href="#art-002">
+    <div class="meta"><span class="mono">2026-08-18</span><span>环境: python-docx</span><span>样本: Elsevier PDF</span></div>
+    <h3>一次图片嵌入失败的解剖<span class="tag">模板</span></h3>
+    <p class="placeholder">此处为占位摘要——替换为你手记的导语。点击进入阅读全文。</p>
+  </a>
+
+  <a class="note-card" href="#art-003">
+    <div class="meta"><span class="mono">2026-08-12</span><span>环境: Windows + Git Bash</span><span>样本: GitHub raw</span></div>
+    <h3>吊销检查引发的安装悬案<span class="tag">模板</span></h3>
+    <p class="placeholder">此处为占位摘要——替换为你手记的导语。点击进入阅读全文。</p>
+  </a>
+
+  <!-- ============ 文章阅读模板（复制 <article> 区块即可新增一篇） ============ -->
+  <div class="reader">
+    <div class="tmpl-note">▼ 文章模板 · 把你的正文粘贴进下方对应位置，删除 placeholder 提示文字即可。复制整个 &lt;article&gt; 区块可新增一篇手记。</div>
+
+    <article id="art-001" class="art">
+      <a class="back-idx" href="notes.html">← 返回手记索引</a>
+      <h1 class="placeholder">在此填写手记标题</h1>
+      <div class="art-meta">
+        <span class="mono placeholder">2026-MM-DD</span>
+        <span class="placeholder">环境 / 工具</span>
+        <span class="placeholder">样本 / 场景</span>
+        <span class="placeholder">阅读 5 分钟</span>
+      </div>
+
+      <p class="placeholder">在此粘贴正文第一段。建议沿用「观察 → 根因 → 结论」的结构，与首页手记卡的 .obs 观察结论呼应。</p>
+
+      <h2 class="placeholder">小标题一</h2>
+      <p class="placeholder">正文段落。可包含代码、引用、列表等。</p>
+
+      <blockquote class="placeholder">关键判断或反直觉结论放在引用块里，便于回看。</blockquote>
+
+      <pre><code class="placeholder"># 在此粘贴命令或代码
+command --flag value</code></pre>
+
+      <h2 class="placeholder">小标题二</h2>
+      <p class="placeholder">继续正文……</p>
+
+      <div class="obs placeholder" style="margin-top:30px;padding:14px 20px;border-left:3px solid var(--accent);background:var(--paper-2);font-style:italic;color:var(--ink-soft);">
+        观察结论 → 用一句话收束这篇手记。
+      </div>
+    </article>
+
+    <!-- 第二、三篇模板（结构与 art-001 一致，id 改为 art-002 / art-003） -->
+    <article id="art-002" class="art" style="margin-top:60px;">
+      <a class="back-idx" href="notes.html">← 返回手记索引</a>
+      <h1 class="placeholder">手记二标题</h1>
+      <div class="art-meta"><span class="mono placeholder">2026-MM-DD</span><span class="placeholder">环境</span></div>
+      <p class="placeholder">在此粘贴第二篇手记正文……</p>
+    </article>
+
+    <article id="art-003" class="art" style="margin-top:60px;">
+      <a class="back-idx" href="notes.html">← 返回手记索引</a>
+      <h1 class="placeholder">手记三标题</h1>
+      <div class="art-meta"><span class="mono placeholder">2026-MM-DD</span><span class="placeholder">环境</span></div>
+      <p class="placeholder">在此粘贴第三篇手记正文……</p>
+    </article>
+
+  </div>
+</div>
+
+<!-- ============ 星表落款 ============ -->
+<footer>
+  <div class="colophon">
+    <svg width="90" height="40" viewBox="0 0 90 40">
+      <line x1="14" y1="28" x2="40" y2="10"/><line x1="40" y1="10" x2="66" y2="30"/><line x1="66" y1="30" x2="50" y2="34"/>
+      <circle cx="14" cy="28" r="2.4"/><circle cx="40" cy="10" r="2.8"/><circle cx="66" cy="30" r="2.2"/><circle cx="50" cy="34" r="2.4"/>
+    </svg>
+    <div class="obs">观测者 余小莫</div>
+    <div class="no mono">星表编号 YXM-2026-003 · 手记座 · 本星表持续生长</div>
+    <div class="badge">vibe coding for LOVE</div>
+  </div>
+</footer>
+
+<script>
+  /* 昼夜节律：19:00–06:00 自动入夜（与主站一致），可手动切换 */
+  (function(){
+    const now = new Date().getHours();
+    const isNight = now >= 19 || now < 6;
+    document.body.dataset.mode = isNight ? 'night' : 'day';
+    const btn = document.getElementById('modeToggle');
+    function updateBtn(){
+      btn.textContent = document.body.dataset.mode === 'night' ? '☀ 切换白昼' : '☾ 切换黑夜';
+    }
+    updateBtn();
+    btn.addEventListener('click', () => {
+      document.body.dataset.mode = document.body.dataset.mode === 'night' ? 'day' : 'night';
+      updateBtn();
+    });
+  })();
+</script>
+</body>
+</html>
