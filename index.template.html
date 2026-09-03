@@ -459,38 +459,7 @@ footer { margin-top:100px; border-top:1.5px solid var(--ink); background:var(--p
     <span class="fig-no mono">FIG. 3</span><h2>Agent 使用手记</h2><span class="en">FIELD NOTES ON AGENTS</span>
   </div>
   <div class="notes">
-        <a class="note" href="notes.html#art-2026-09-04-personal-workstation">
-      <div class="stamp"><div class="date mono">2026-09-04</div><div>WorkBuddy · 腾讯混元大模型</div><div>个人工作站设计</div></div>
-      <div>
-        <h3>余小莫的个人工作站</h3>
-        <p>一份 zine 风个人档案：从 70+ 想法收敛到三个 IP 因子，全程无设计类 Skill 参与。</p>
-        <div class="obs">好设计不是&quot;让 AI 出图&quot;，而是把&quot;想要什么样的自己&quot;讲清楚，再走完广撒网 → 强身份 → 精打磨。</div>
-      </div>
-    </a>
-    <a class="note" href="notes.html#art-2026-08-20-browser-automation">
-      <div class="stamp"><div class="date mono">2026-08-20</div><div>WorkBuddy + bsk</div><div>微信后台</div></div>
-      <div>
-        <h3>浏览器自动化：DOM 文本比截图可靠</h3>
-        <p>让 Agent 抓公众号后台数据，canvas 图表页截图持续失败，改用 evaluate 直读 innerText 一次拿到全部数字。</p>
-        <div class="obs">Agent 操作网页，「读 DOM」优先于「看截图」；视觉是给人的，结构是给 Agent 的。</div>
-      </div>
-    </a>
-    <a class="note" href="notes.html#art-2026-08-18-docx-image-embed">
-      <div class="stamp"><div class="date mono">2026-08-18</div><div>python-docx</div><div>Elsevier PDF</div></div>
-      <div>
-        <h3>一次图片嵌入失败的解剖</h3>
-        <p>期刊 PDF 提取的 JPEG 嵌入 docx 报 UnrecognizedImageError。根因 Adobe APP14 头，python-docx 只认 JFIF，PIL 转存即愈。</p>
-        <div class="obs">报错信息只指到门口，真正的根因常在文件头的两个字节里。</div>
-      </div>
-    </a>
-    <a class="note" href="notes.html#art-2026-08-12-revocation-install">
-      <div class="stamp"><div class="date mono">2026-08-12</div><div>Windows + Git Bash</div><div>GitHub raw</div></div>
-      <div>
-        <h3>吊销检查引发的安装悬案</h3>
-        <p>curl 抓 raw.githubusercontent 反复报 CRYPT_E_REVOCATION_OFFLINE。换托管 Python 的 urllib（OpenSSL 不做 Windows 吊销检查）一次通过。</p>
-        <div class="obs">同一份代码，换一条 TLS 栈，结论完全不同——排查时先怀疑环境，再怀疑自己。</div>
-      </div>
-    </a>
+    <!--NOTES_CARDS-->
   </div>
 </section>
 

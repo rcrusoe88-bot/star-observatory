@@ -5,3 +5,20 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# 参考仓库克隆（仅本地阅读用，非本站点内容）
+_ref_workstation/
+
+# 本地开发/自检辅助脚本（非站点运行所需）
+scaffold.mjs
+selftest.js
+preview.js
+preview2.js
+extract_article.py
+
+# 自检/预览临时截图
+assets/_selftest_*.png
+assets/preview-*.png
+
+# 依赖
+node_modules/
