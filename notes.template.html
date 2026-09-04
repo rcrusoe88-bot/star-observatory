@@ -98,6 +98,11 @@
     padding:4px 12px; border-radius:999px;
   }
   .back-idx:hover{ border-color:var(--accent); color:var(--accent); }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:4px; }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  }
 
   /* 当某篇文章被 URL 锚定：收起索引 / 模板提示 / 其他文章，但保留 hero（含静态手记座星座） */
   body:has(.art:target) .idx-h,
@@ -113,7 +118,7 @@
 </head>
 <body data-mode="night">
 
-<header>
+<header aria-label="站点页眉">
   <div class="logo"><b>余</b>余小莫 · 星表</div>
   <div class="nav-right">
     <a class="back" href="index.html">← 返回星表</a>

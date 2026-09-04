@@ -22,3 +22,6 @@ assets/preview-*.png
 
 # 依赖
 node_modules/
+
+# 构建产物（由 build.mjs 生成，CI 从这里部署）
+dist/

@@ -1,36 +1,40 @@
-// build.mjs — 余小莫的星空观察台 · 零依赖静态生成器
-// 读取 notes/*.md → 注入 index.template.html / notes.template.html → 写出 index.html / notes.html
-// 运行：node build.mjs   （无需 npm install；CI 构建命令填 node build.mjs 即可）
+// build.mjs — Markdown 内容 + HTML 模板 → dist/ 静态站点（零第三方依赖）
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
 
-const __dir = path.dirname(url.fileURLToPath(import.meta.url));
-const root = __dir;
+const root = path.dirname(url.fileURLToPath(import.meta.url));
+const outDir = path.join(root, 'dist');
 
 /* ---------- 工具 ---------- */
 const esc = s => String(s)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
-const pad = n => String(n).padStart(2, '0');
-const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function safeUrl(value, kind) {
+  const original = String(value).trim();
+  const decoded = original.replace(/&amp;/g, '&');
+  const allowed = /^(?:https?:\/\/|\/(?!\/)|\.\.?\/|#)/i.test(decoded) || !/^[a-z][a-z0-9+.-]*:/i.test(decoded);
+  if (!allowed) throw new Error(`不安全的${kind} URL：${decoded}`);
+  return original;
+}
 
 /* ---------- 轻量 Markdown → HTML（支持 ![](src "caption") 插图） ---------- */
 function inline(t) {
   t = esc(t);
-  // 图片：![alt](src) 或 ![alt](src "caption") → figure / figure+figcaption
-  // 注意：本函数先 esc() 全文，故 caption 的引号已成 &quot;，这里按 &quot; 匹配
   t = t.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+&quot;([\s\S]*?)&quot;)?\s*\)/g,
-    (m, alt, src, cap) => cap
-      ? `<figure><img src="${src}" alt="${alt}"><figcaption>${cap}</figcaption></figure>`
-      : `<figure><img src="${src}" alt="${alt}"></figure>`);
+    (m, alt, src, cap) => {
+      const imageSrc = safeUrl(src, '图片');
+      return cap
+        ? `<figure><img src="${imageSrc}" alt="${alt}"><figcaption>${cap}</figcaption></figure>`
+        : `<figure><img src="${imageSrc}" alt="${alt}"></figure>`;
+    });
   t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-    (m, txt, href) => `<a href="${href}" target="_blank" rel="noopener">${txt}</a>`);
+    (m, txt, href) => `<a href="${safeUrl(href, '链接')}" target="_blank" rel="noopener">${txt}</a>`);
   t = t.replace(/`([^`]+)`/g, (m, c) => `<code>${c}</code>`);
   t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   return t;
 }
+
 function mdToHtml(src) {
   const lines = src.replace(/\r\n?/g, '\n').split('\n');
   let html = '', i = 0;
@@ -40,7 +44,7 @@ function mdToHtml(src) {
       const lang = (line.match(/^```(\w*)/) || [])[1] || '';
       i++; let code = '';
       while (i < lines.length && !/^```/.test(lines[i])) { code += lines[i] + '\n'; i++; }
-      i++;
+      if (i < lines.length) i++;
       html += `<pre><code data-lang="${esc(lang)}">${esc(code)}</code></pre>`;
       continue;
     }
@@ -74,28 +78,30 @@ function mdToHtml(src) {
   return html;
 }
 
-/* ---------- 解析 frontmatter ---------- */
-function parseNote(text) {
+/* ---------- 解析并校验 frontmatter ---------- */
+function parseNote(text, fileName) {
   text = text.replace(/\r\n?/g, '\n');
   const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
-  let fm = {}, body = text;
-  if (m) {
-    body = text.slice(m[0].length);
-    m[1].split('\n').forEach(l => {
-      const mm = l.match(/^([\w-]+):\s*(.*)$/);
-      if (mm) fm[mm[1]] = mm[2].trim();
-    });
+  if (!m) throw new Error(`笔记缺少 frontmatter：${fileName}`);
+  const fm = {};
+  m[1].split('\n').forEach(line => {
+    const mm = line.match(/^([\w-]+):\s*(.*)$/);
+    if (mm) fm[mm[1]] = mm[2].trim();
+  });
+  if (!fm.title) throw new Error(`笔记缺少 title：${fileName}`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fm.date || '') || Number.isNaN(Date.parse(`${fm.date}T00:00:00Z`))) {
+    throw new Error(`笔记 date 必须是 YYYY-MM-DD：${fileName}`);
   }
-  return { fm, body };
+  return { fm, body: text.slice(m[0].length) };
 }
 
 /* ---------- 读取笔记 ---------- */
 const notesDir = path.join(root, 'notes');
 const files = fs.readdirSync(notesDir)
   .filter(f => f.endsWith('.md') && !f.startsWith('.'));
-const notes = files.map(f => {
-  const slug = f.replace(/\.md$/, '');
-  const { fm, body } = parseNote(fs.readFileSync(path.join(notesDir, f), 'utf8'));
+const notes = files.map(fileName => {
+  const slug = fileName.replace(/\.md$/, '');
+  const { fm, body } = parseNote(fs.readFileSync(path.join(notesDir, fileName), 'utf8'), fileName);
   return { slug, fm, bodyHtml: mdToHtml(body) };
 }).sort((a, b) => (b.fm.date || '').localeCompare(a.fm.date || ''));
 
@@ -137,14 +143,18 @@ function homeCard(n) {
     </a>`;
 }
 
-/* ---------- 注入模板 ---------- */
+/* ---------- 生成 dist ---------- */
+fs.rmSync(outDir, { recursive: true, force: true });
+fs.mkdirSync(outDir, { recursive: true });
+fs.cpSync(path.join(root, 'assets'), path.join(outDir, 'assets'), { recursive: true });
+
 let idxTpl = fs.readFileSync(path.join(root, 'index.template.html'), 'utf8');
 idxTpl = idxTpl.split('<!--NOTES_CARDS-->').join(notes.map(homeCard).join('\n'));
-fs.writeFileSync(path.join(root, 'index.html'), idxTpl);
+fs.writeFileSync(path.join(outDir, 'index.html'), idxTpl);
 
 let notesTpl = fs.readFileSync(path.join(root, 'notes.template.html'), 'utf8');
 notesTpl = notesTpl.split('<!--NOTES_INDEX-->').join(notes.map(noteIndexCard).join('\n'));
 notesTpl = notesTpl.split('<!--NOTES_ARTICLES-->').join(notes.map(noteArticle).join('\n'));
-fs.writeFileSync(path.join(root, 'notes.html'), notesTpl);
+fs.writeFileSync(path.join(outDir, 'notes.html'), notesTpl);
 
-console.log(`✓ 生成 index.html + notes.html（${notes.length} 篇手记：${notes.map(n => n.slug).join(', ')}）`);
+console.log(`✓ 生成 dist/index.html + dist/notes.html（${notes.length} 篇手记：${notes.map(n => n.slug).join(', ')}）`);
