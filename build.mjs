@@ -133,12 +133,28 @@ function homeCard(n) {
   const date = esc(n.fm.date || '');
   const env = esc(n.fm.env || '');
   const sample = esc(n.fm.sample || '');
-  return `    <a class="note" href="notes.html#art-${esc(n.slug)}">
-      <div class="stamp"><div class="date mono">${date}</div>${env ? `<div>${env}</div>` : ''}${sample ? `<div>${sample}</div>` : ''}</div>
-      <div>
-        <h3>${esc(n.fm.title || n.slug)}</h3>
-        <p>${esc(n.fm.summary || '')}</p>
-        ${n.fm.obs ? `<div class="obs">${esc(n.fm.obs)}</div>` : ''}
+  const tag = esc(n.fm.tag || 'NOTE');
+  const title = esc(n.fm.title || n.slug);
+  const summary = esc(n.fm.summary || '');
+  const obs = n.fm.obs ? esc(n.fm.obs) : '';
+  return `    <a class="flip-card" data-slug="${esc(n.slug)}" href="notes.html#art-${esc(n.slug)}">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="stamp">
+            <span class="date mono">${date}</span>
+            ${env ? `<span>${env}</span>` : ''}
+            ${sample ? `<span>${sample}</span>` : ''}
+          </div>
+          <h3>${title}<span class="tag">${tag}</span></h3>
+          <p>${summary}</p>
+        </div>
+        <div class="flip-back">
+          ${obs ? `<div class="obs">${obs}</div>` : '<div class="obs" style="opacity:.5;font-style:normal;">暂无观察结论</div>'}
+          <div class="flip-meta">
+            <span>${env || ''}${env && sample ? ' · ' : ''}${sample || ''}</span>
+            <span class="flip-more">阅读全文 →</span>
+          </div>
+        </div>
       </div>
     </a>`;
 }
