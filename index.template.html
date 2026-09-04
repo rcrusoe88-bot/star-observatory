@@ -46,6 +46,11 @@ body {
   overflow-x: hidden;
 }
 .mono { font-family: "SFMono-Regular", Consolas, "Courier New", monospace; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior:auto; }
+  *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
 
 /* ============ 顶栏 ============ */
 header {
@@ -121,7 +126,17 @@ section { max-width: 1060px; margin: 0 auto; padding: 90px 28px 40px; }
   white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .2s;
 }
 #compass a:hover .clabel { opacity:1; }
-@media (max-width:900px){ #compass { display:none; } }
+@media (max-width:900px){
+  #compass {
+    top:auto; right:50%; bottom:12px; transform:translateX(50%);
+    flex-direction:row; gap:8px; padding:7px 10px;
+    background:color-mix(in srgb, var(--card) 92%, transparent);
+    border:1px solid var(--line); border-radius:999px;
+  }
+  #compass a { padding:2px 4px; }
+  #compass a:hover, #compass a.active { transform:scale(1.1); }
+  #compass a .clabel { display:none; }
+}
 
 /* ============ 专利插图框 ============ */
 .patent {
@@ -253,7 +268,7 @@ footer { margin-top:100px; border-top:1.5px solid var(--ink); background:var(--p
 </header>
 
 <!-- 侧边星座罗盘 -->
-<nav id="compass">
+<nav id="compass" aria-label="页面章节导航">
   <a href="#dex" data-sec="dex"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="7.2,19.8 9.6,23 12.4,21.1 11.2,17.6 8,16 7.2,19.8" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="7.2" cy="19.8" r="2"/><circle cx="9.6" cy="23" r="2"/><circle cx="12.4" cy="21.1" r="2"/><circle cx="11.2" cy="17.6" r="2"/><circle cx="8" cy="16" r="2"/></svg><span class="clabel">图鉴座 · Skill</span></a>
   <a href="#tree" data-sec="tree"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="17.6,21.8 20,25 22.8,22.4 21.2,19.2 17.6,21.8" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="17.6" cy="21.8" r="2"/><circle cx="20" cy="25" r="2"/><circle cx="22.8" cy="22.4" r="2"/><circle cx="21.2" cy="19.2" r="2"/></svg><span class="clabel">进化座 · Tree</span></a>
   <a href="#notes" data-sec="notes"><svg width="30" height="24" viewBox="0 0 40 32"><polyline points="27.2,19.2 30,22.4 32.8,19.8 31.2,16.6 27.2,19.2" fill="none" stroke-width=".8" stroke-dasharray="2 2" stroke="currentColor" opacity=".6"/><circle cx="27.2" cy="19.2" r="2"/><circle cx="30" cy="22.4" r="2"/><circle cx="32.8" cy="19.8" r="2"/><circle cx="31.2" cy="16.6" r="2"/></svg><span class="clabel">手记座 · Notes</span></a>
@@ -262,8 +277,8 @@ footer { margin-top:100px; border-top:1.5px solid var(--ink); background:var(--p
 
 <!-- ================= HERO：星系背景 + 星座导航 ================= -->
 <div id="hero">
-  <canvas id="galaxy"></canvas>
-  <canvas id="sky"></canvas>
+  <canvas id="galaxy" aria-hidden="true"></canvas>
+  <canvas id="sky" role="img" aria-label="星座章节导航"></canvas>
   <div class="star-tip" id="tip"></div>
   <div class="hero-title">
     <div class="fig mono">LAB NOTEBOOK · PORTFOLIO EDITION</div>
@@ -279,7 +294,7 @@ footer { margin-top:100px; border-top:1.5px solid var(--ink); background:var(--p
     <svg class="mini-const" width="46" height="36" viewBox="0 0 40 32"><polyline points="7.2,19.8 9.6,23 12.4,21.1 11.2,17.6 8,16 7.2,19.8" fill="none"/><circle cx="7.2" cy="19.8" r="1.8"/><circle cx="9.6" cy="23" r="1.8"/><circle cx="12.4" cy="21.1" r="1.8"/><circle cx="11.2" cy="17.6" r="1.8"/><circle cx="8" cy="16" r="1.8"/></svg>
     <span class="fig-no mono">FIG. 1</span><h2>开源 Skill 图鉴</h2><span class="en">OPEN-SOURCE SKILL DEX</span>
   </div>
-  <p class="sync-note mono">数据同步自 GITHUB · 已剔除 FORK · 最近观测 <b>2026-09-03</b> · 共 6 件原创 Skill</p>
+  <p class="sync-note mono">内容清单由模板维护 · 最近观测 <b>2026-09-03</b> · 共 6 件原创 Skill</p>
   <div class="dex">
 
     <div class="dex-card">
@@ -519,6 +534,8 @@ footer { margin-top:100px; border-top:1.5px solid var(--ink); background:var(--p
 </footer>
 
 <script>
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /* ============ 昼夜节律 ============ */
 function circadian() {
   const h = new Date().getHours();
@@ -536,8 +553,9 @@ function updateBtn() {
   if (window.galaxySetLight) window.galaxySetLight(document.body.dataset.mode === 'day');
 }
 circadian();
+const signNow = new Date();
 document.getElementById('signDate').textContent =
-  new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  `${signNow.getFullYear()}.${String(signNow.getMonth()+1).padStart(2,'0')}.${String(signNow.getDate()).padStart(2,'0')}`;
 
 /* 星座罗盘 scroll-spy */
 const compassLinks = document.querySelectorAll('#compass a');
@@ -568,14 +586,32 @@ const constellations = [
     stars:[[-.6,.2,.5],[0,-.5,-.5],[.6,.2,.3]] },
 ];
 let hoverStar = null, W, H, t0 = performance.now();
+let dpr = 1, heroVisible = true, constellationFrame = 0;
 
-function resize(){ W = canvas.width = hero.clientWidth; H = canvas.height = hero.clientHeight; }
+function resize(){
+  W = hero.clientWidth; H = hero.clientHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.round(W * dpr));
+  canvas.height = Math.max(1, Math.round(H * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
 window.addEventListener('resize', resize); resize();
 
-/* 性能优化：hero 不在视口时跳过星座绘制，释放主线程/GPU 给滚动合成 */
-let heroVisible = true;
-new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; }, { threshold: 0 })
-  .observe(hero);
+/* 性能优化：hero 不在视口时取消下一帧调度，释放主线程/GPU 给滚动合成 */
+function scheduleConstellationFrame(){
+  if (prefersReducedMotion || !heroVisible || constellationFrame) return;
+  constellationFrame = requestAnimationFrame(draw);
+}
+new IntersectionObserver(es => {
+  heroVisible = es[0].isIntersecting;
+  if (heroVisible) {
+    if (prefersReducedMotion) draw(performance.now());
+    else scheduleConstellationFrame();
+  } else if (constellationFrame) {
+    cancelAnimationFrame(constellationFrame);
+    constellationFrame = 0;
+  }
+}, { threshold: 0 }).observe(hero);
 
 /* 三维 → 二维透视投影：远小近大、远淡近亮 */
 const TILT = 0.35;
@@ -594,7 +630,7 @@ function project(c, s, t){
 }
 
 function draw(now){
-  requestAnimationFrame(draw);
+  constellationFrame = 0;
   if (!heroVisible) return;
   const t = (now - t0)/1000;
   ctx.clearRect(0,0,W,H);
@@ -646,8 +682,10 @@ function draw(now){
       }
     }
   }
+  scheduleConstellationFrame();
 }
-requestAnimationFrame(draw);
+if (prefersReducedMotion) draw(performance.now());
+else scheduleConstellationFrame();
 
 function findStar(e){
   const r = canvas.getBoundingClientRect();
@@ -919,10 +957,13 @@ void main() {
   };
 
   function resizeGalaxy(){
-    gc.width = hero.clientWidth;
-    gc.height = hero.clientHeight;
-    gl.viewport(0, 0, gc.width, gc.height);
-    gl.uniform3f(U.uResolution, gc.width, gc.height, gc.width / gc.height);
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(hero.clientWidth * pixelRatio));
+    const height = Math.max(1, Math.round(hero.clientHeight * pixelRatio));
+    gc.width = width;
+    gc.height = height;
+    gl.viewport(0, 0, width, height);
+    gl.uniform3f(U.uResolution, width, height, width / height);
   }
   window.addEventListener('resize', resizeGalaxy);
   resizeGalaxy();
@@ -938,13 +979,25 @@ void main() {
   });
   hero.addEventListener('mouseleave', () => { targetActive = 0; });
 
-  /* 性能优化：hero 离开视口时暂停 WebGL 渲染，把 GPU 留给滚动合成 */
-  let galaxyVisible = true;
-  new IntersectionObserver(es => { galaxyVisible = es[0].isIntersecting; }, { threshold: 0 })
-    .observe(document.getElementById('hero'));
+  /* 性能优化：hero 离开视口时取消下一帧调度，把 GPU 留给滚动合成 */
+  let galaxyVisible = true, galaxyFrame = 0;
+  function scheduleGalaxyFrame(){
+    if (prefersReducedMotion || !galaxyVisible || galaxyFrame) return;
+    galaxyFrame = requestAnimationFrame(frame);
+  }
+  new IntersectionObserver(es => {
+    galaxyVisible = es[0].isIntersecting;
+    if (galaxyVisible) {
+      if (prefersReducedMotion) frame(performance.now());
+      else scheduleGalaxyFrame();
+    } else if (galaxyFrame) {
+      cancelAnimationFrame(galaxyFrame);
+      galaxyFrame = 0;
+    }
+  }, { threshold: 0 }).observe(hero);
 
   function frame(t){
-    requestAnimationFrame(frame);
+    galaxyFrame = 0;
     if (!galaxyVisible) return;
     const sec = t * 0.001;
     hueCurrent += (hueTarget - hueCurrent) * 0.03;
@@ -960,8 +1013,10 @@ void main() {
     gl.uniform1f(U.uMouseActiveFactor, smoothActive);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    scheduleGalaxyFrame();
   }
-  requestAnimationFrame(frame);
+  if (prefersReducedMotion) frame(performance.now());
+  else scheduleGalaxyFrame();
 })();
 </script>
 </body>

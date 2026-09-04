@@ -24,12 +24,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build site
-        run: node build.mjs
+      - name: Build and verify site
+        run: node scripts/check.mjs
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
   deploy:
     needs: build
