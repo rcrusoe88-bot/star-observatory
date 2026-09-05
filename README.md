@@ -40,7 +40,7 @@ obs: 观察结论或可复用经验。
 正文支持标题、列表、引用、代码块、链接和图片。
 ```
 
-必填 frontmatter：`title`、`date`。`date` 必须使用 `YYYY-MM-DD`，构建时会校验；图片和链接只允许 `http(s)` 或站内相对路径，避免把不安全 URL 注入页面。
+必填 frontmatter：`title`、`date`。`date` 必须使用 `YYYY-MM-DD` 且对应真实存在的日历日期，构建时会严格校验；图片和链接只允许 `http(s)` 或站内相对路径，避免把不安全 URL 注入页面。
 
 模板文件 `notes/_inbox/模板-笔记格式示范.md` 会被发布脚本自动跳过。
 
@@ -83,7 +83,7 @@ node scripts/publish.mjs --no-push
 ## 技术与性能
 
 - **零运行时依赖**：纯 HTML/CSS/JS，适合 GitHub Pages、EdgeOne 或任意静态托管。
-- **可重复构建**：源文件是模板与 Markdown，部署文件统一生成到被忽略的 `dist/`，避免手工修改生成 HTML。
+- **可重复构建**：源文件是模板与 Markdown，部署文件统一生成到被忽略的 `dist/`，避免手工修改生成 HTML。`scripts/check.mjs` 还会解析生成页面中的内联 JavaScript，提前拦截语法错误。
 - **WebGL 星系**：原生 WebGL GLSL 背景，不依赖 React 或 OGL。
 - **2D Canvas 三维星座**：深度坐标、透视投影和画家算法形成可点击章节导航。
 - **性能边界**：Hero 离开视口后取消下一帧调度；页面支持 `prefers-reduced-motion`，Canvas 同时按设备像素比绘制。
