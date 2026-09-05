@@ -101,6 +101,7 @@ const files = fs.readdirSync(notesDir)
   .filter(f => f.endsWith('.md') && !f.startsWith('.'));
 const notes = files.map(fileName => {
   const slug = fileName.replace(/\.md$/, '');
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`笔记文件名必须是小写字母、数字和连字符：${fileName}`);
   const { fm, body } = parseNote(fs.readFileSync(path.join(notesDir, fileName), 'utf8'), fileName);
   return { slug, fm, bodyHtml: mdToHtml(body) };
 }).sort((a, b) => (b.fm.date || '').localeCompare(a.fm.date || ''));
@@ -109,7 +110,7 @@ const notes = files.map(fileName => {
 function noteIndexCard(n) {
   const meta = [n.fm.date, n.fm.env, n.fm.sample].filter(Boolean)
     .map(x => `<span>${esc(x)}</span>`).join('');
-  return `  <a class="note-card" href="#art-${esc(n.slug)}">
+  return `  <a class="note-card" href="notes/${esc(n.slug)}.html">
     <div class="meta">${meta}</div>
     <h3>${esc(n.fm.title || n.slug)}<span class="tag">${esc(n.fm.tag || 'NOTE')}</span></h3>
     <p>${esc(n.fm.summary || '')}</p>
@@ -121,7 +122,7 @@ function noteArticle(n) {
   const obs = n.fm.obs
     ? `<div class="obs" style="margin-top:30px;padding:14px 20px;border-left:3px solid var(--accent);background:var(--paper-2);font-style:italic;color:var(--ink-soft);">观察结论 → ${esc(n.fm.obs)}</div>`
     : '';
-  return `    <article id="art-${esc(n.slug)}" class="art" style="margin-top:60px;">
+  return `    <article class="art">
       <a class="back-idx" href="notes.html">← 返回手记索引</a>
       <h1>${esc(n.fm.title || n.slug)}</h1>
       <div class="art-meta">${meta}</div>
@@ -137,7 +138,7 @@ function homeCard(n) {
   const title = esc(n.fm.title || n.slug);
   const summary = esc(n.fm.summary || '');
   const obs = n.fm.obs ? esc(n.fm.obs) : '';
-  return `    <a class="flip-card" data-slug="${esc(n.slug)}" href="notes.html#art-${esc(n.slug)}">
+  return `    <a class="flip-card" data-slug="${esc(n.slug)}" href="notes/${esc(n.slug)}.html">
       <div class="flip-inner">
         <div class="flip-front">
           <div class="stamp">
@@ -168,9 +169,39 @@ let idxTpl = fs.readFileSync(path.join(root, 'index.template.html'), 'utf8');
 idxTpl = idxTpl.split('<!--NOTES_CARDS-->').join(notes.map(homeCard).join('\n'));
 fs.writeFileSync(path.join(outDir, 'index.html'), idxTpl);
 
-let notesTpl = fs.readFileSync(path.join(root, 'notes.template.html'), 'utf8');
-notesTpl = notesTpl.split('<!--NOTES_INDEX-->').join(notes.map(noteIndexCard).join('\n'));
-notesTpl = notesTpl.split('<!--NOTES_ARTICLES-->').join(notes.map(noteArticle).join('\n'));
-fs.writeFileSync(path.join(outDir, 'notes.html'), notesTpl);
+const notesTpl = fs.readFileSync(path.join(root, 'notes.template.html'), 'utf8');
+function renderNotesPage({ title, baseHref = '', content, legacyRedirect = '' }) {
+  return notesTpl
+    .split('<!--PAGE_TITLE-->').join(esc(title))
+    .split('<!--BASE_HREF-->').join(baseHref ? `<base href="${esc(baseHref)}">` : '')
+    .split('<!--LEGACY_REDIRECT-->').join(legacyRedirect)
+    .split('<!--NOTES_CONTENT-->').join(content);
+}
 
-console.log(`✓ 生成 dist/index.html + dist/notes.html（${notes.length} 篇手记：${notes.map(n => n.slug).join(', ')}）`);
+const notesIndexContent = `  <div class="idx-h">
+    <span class="fig mono">FIG. 3</span><h2>手记索引</h2>
+  </div>
+${notes.map(noteIndexCard).join('\n')}`;
+const legacyRedirect = `<script>
+  (() => {
+    const match = location.hash.match(/^#art-([a-z0-9]+(?:-[a-z0-9]+)*)$/);
+    if (match) location.replace(\`notes/\${match[1]}.html\`);
+  })();
+</script>`;
+fs.writeFileSync(path.join(outDir, 'notes.html'), renderNotesPage({
+  title: '手记座 · Agent 使用手记 — 余小莫星表',
+  content: notesIndexContent,
+  legacyRedirect,
+}));
+
+const noteOutDir = path.join(outDir, 'notes');
+fs.mkdirSync(noteOutDir, { recursive: true });
+for (const note of notes) {
+  fs.writeFileSync(path.join(noteOutDir, `${note.slug}.html`), renderNotesPage({
+    title: `${note.fm.title} — 手记座 · 余小莫星表`,
+    baseHref: '../',
+    content: noteArticle(note),
+  }));
+}
+
+console.log(`✓ 生成首页、手记索引与 ${notes.length} 个独立手记页面（${notes.map(n => n.slug).join(', ')}）`);

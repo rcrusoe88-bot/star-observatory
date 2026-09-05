@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>手记座 · Agent 使用手记 — 余小莫星表</title>
+<!--BASE_HREF-->
+<title><!--PAGE_TITLE--></title>
 <style>
   /* ===== 主题令牌（与作品集主站一致） ===== */
   :root{
@@ -70,7 +71,7 @@
   /* ===== 文章模板阅读区 ===== */
   .reader{ margin-top:60px; border-top:2px solid var(--ink); padding-top:30px; }
   .reader .tmpl-note{ font-size:12px; color:var(--accent); letter-spacing:.08em; margin-bottom:18px; }
-  article{ max-width:720px; }
+  article{ max-width:720px; margin:0 auto; }
   article h1{ font-size:clamp(24px,3.5vw,34px); letter-spacing:.06em; margin:0 0 10px; }
   .art-meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12px; letter-spacing:.1em; color:var(--ink-faint); border-bottom:1px dashed var(--line); padding-bottom:14px; margin-bottom:26px; }
   article h2{ font-size:20px; letter-spacing:.05em; margin:34px 0 12px; border-left:4px solid var(--accent); padding-left:12px; }
@@ -91,7 +92,7 @@
   .colophon .no{ font-size:11px; letter-spacing:.3em; color:var(--ink-faint); margin-top:10px; }
   .colophon .badge{ display:inline-block; margin-top:16px; font-size:11px; letter-spacing:.2em; border:1px solid var(--accent); color:var(--accent); padding:5px 16px; border-radius:999px; }
 
-  /* ===== 单篇锁定模式（URL 含 #art-xxx 时自动启用） ===== */
+  /* ===== 单篇导航与动效降级 ===== */
   .back-idx{
     display:inline-block; margin-bottom:18px;
     font-size:12px; letter-spacing:.14em; text-decoration:none;
@@ -104,20 +105,10 @@
     html{ scroll-behavior:auto; }
     *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
   }
-
-  /* 当某篇文章被 URL 锚定：收起索引 / 模板提示 / 其他文章，但保留 hero（含静态手记座星座） */
-  body:has(.art:target) .idx-h,
-  body:has(.art:target) .note-card,
-  body:has(.art:target) .tmpl-note {
-    display:none !important;
-  }
-  body:has(.art:target) .art { display:none; }
-  body:has(.art:target) .art:target { display:block; }
-  /* 单篇模式下 article 之间不再需要分隔间距 */
-  body:has(.art:target) .art:target { margin-top:0 !important; }
 </style>
 </head>
 <body data-mode="night">
+<!--LEGACY_REDIRECT-->
 
 <header aria-label="站点页眉">
   <div class="logo"><b>余</b>余小莫 · 星表</div>
@@ -145,14 +136,7 @@
 </div>
 
 <div class="wrap">
-
-  <!-- ============ 手记索引（占位模板，待你加载真实文章） ============ -->
-  <div class="idx-h">
-    <span class="fig mono">FIG. 3</span><h2>手记索引</h2>
-  </div>
-
-  <!-- 复制下面整块 .note-card 即可新增一条索引；href 指向对应文章锚点 -->
-    <!--NOTES_INDEX-->  <!--NOTES_ARTICLES-->
+<!--NOTES_CONTENT-->
 </div>
 
 <!-- ============ 星表落款 ============ -->

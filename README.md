@@ -18,7 +18,7 @@
 - **Agent 使用手记**：用 Markdown 记录真实排障、判断和反直觉结论。
 - **自研 APP**：持续补充个人软件与实验项目。
 
-新增手记只需要在 `notes/_inbox/` 放入一个 Markdown 文件。文件被发布到 `notes/` 后，会自动进入首页和手记详情页。
+新增手记只需要在 `notes/_inbox/` 放入一个 Markdown 文件。文件被发布到 `notes/` 后，会自动进入首页和手记索引，并生成独立的 `notes/<slug>.html` 详情页。
 
 ## 手记格式
 
@@ -49,7 +49,7 @@ obs: 观察结论或可复用经验。
 项目运行时零第三方依赖，但内容发布前需要运行一次 Node 构建：
 
 ```bash
-# 生成 dist/index.html、dist/notes.html，并复制站点资源
+# 生成首页、手记索引、每篇独立详情页，并复制站点资源
 node build.mjs
 
 # 推荐：从构建产物启动本地静态服务器
@@ -93,7 +93,9 @@ node scripts/publish.mjs --no-push
 
 ```text
 .
-├── .github/workflows/deploy-pages.yml  # 构建、校验并部署 dist/
+├── .github/workflows/
+│   ├── deploy-pages.yml                # main 构建、校验并部署 dist/
+│   └── verify-site.yml                 # Pull Request 构建检查
 ├── assets/                             # 手记插图等静态资源
 ├── notes/                              # 已发布 Markdown 内容
 │   └── _inbox/                         # 待发布内容收件箱
@@ -107,7 +109,7 @@ node scripts/publish.mjs --no-push
 └── README.md
 ```
 
-`dist/` 是构建产物，不提交到 Git；线上部署只使用 CI 生成的 `dist/`。
+`dist/` 是构建产物，不提交到 Git；其中 `notes.html` 是手记索引，`notes/<slug>.html` 是单篇正文。线上部署只使用 CI 生成的 `dist/`。
 
 ---
 
