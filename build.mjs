@@ -89,8 +89,15 @@ function parseNote(text, fileName) {
     if (mm) fm[mm[1]] = mm[2].trim();
   });
   if (!fm.title) throw new Error(`笔记缺少 title：${fileName}`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fm.date || '') || Number.isNaN(Date.parse(`${fm.date}T00:00:00Z`))) {
-    throw new Error(`笔记 date 必须是 YYYY-MM-DD：${fileName}`);
+  const dateValue = fm.date || '';
+  const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+    ? new Date(`${dateValue}T00:00:00Z`)
+    : null;
+  const validDate = parsedDate
+    && !Number.isNaN(parsedDate.valueOf())
+    && parsedDate.toISOString().slice(0, 10) === dateValue;
+  if (!validDate) {
+    throw new Error(`笔记 date 必须是真实存在的 YYYY-MM-DD 日期：${fileName}`);
   }
   return { fm, body: text.slice(m[0].length) };
 }
