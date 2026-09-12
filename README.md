@@ -7,17 +7,7 @@
 
 ## 在线预览
 
-🌐 **https://rcrusoe88-bot.github.io/star-observatory/**
-
-## 设计稿索引
-
-- [index-galaxy-v2.html](index-galaxy-v2.html)
-- [index-galaxy-v3.html](index-galaxy-v3.html)
-- [index-galaxy-v4.html](index-galaxy-v4.html)
-- [index-galaxy-v5.html](index-galaxy-v5.html)
-- [index-galaxy-deck.html](index-galaxy-deck.html)
-- [index-neon.html](index-neon.html)
-- [index-shinkai.html](index-shinkai.html)
+🌐 **https://rcrusoe88-bot.github.io/star-observatory/** · 当前首页基于 `index-galaxy-v5.html`。
 
 站点使用 GitHub Pages 部署：推送到 `main` 后，CI 会校验笔记、生成 `dist/` 静态产物，并将 `dist/` 发布到 Pages。
 
