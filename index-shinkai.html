@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>余小莫的星空观察台 — vibe coding for LOVE</title>
+<style>
+/* ==========================================================
+   STAR OBSERVATORY · SHINKAI EDITION
+   滚动即时间：正午积雨云 → 黄金时刻 → 小镇黄昏
+   ========================================================== */
+:root{
+  --ink:      #1E2A4A;
+  --ink-soft: #46587A;
+  --gold:     #F5B95A;
+  --gold-deep:#B4762A;
+  --paper:    #FFFDF7;
+  --space:    #0D1226;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, "Courier New", monospace;
+  --sans: "PingFang SC","HarmonyOS Sans SC","Source Han Sans SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--sans); color:var(--ink);
+  overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  background:#7FB2DF; /* 图未载入时的兜底天色 */
+}
+::selection{background:var(--gold);color:#1E2A4A}
+.mono{font-family:var(--mono)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:4px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+/* 细腻胶片颗粒 */
+body::after{
+  content:"";position:fixed;inset:0;z-index:99;pointer-events:none;opacity:.06;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============ 天空舞台（固定背景，随滚动换幕） ============ */
+#skyStage{position:fixed;inset:0;z-index:0;overflow:hidden}
+.scene{position:absolute;inset:-6%;background-size:cover;background-position:center;will-change:opacity,transform}
+.s-noon{background-image:url('assets/shinkai/sky-noon.jpg');opacity:1;animation:kb 46s ease-in-out infinite alternate}
+.s-gold{background-image:url('assets/shinkai/sky-gold.jpg');opacity:0;animation:kb 52s ease-in-out infinite alternate-reverse}
+.s-dusk{background-image:url('assets/shinkai/sky-dusk.jpg');opacity:0;animation:kb 58s ease-in-out infinite alternate}
+@keyframes kb{from{transform:scale(1.02) translate(0,0)}to{transform:scale(1.10) translate(-1.5%,1%)}}
+/* 太阳 & 月亮 */
+.sun{position:absolute;right:16%;top:16%;width:74px;height:74px;border-radius:50%;z-index:2;
+  background:radial-gradient(circle,#FFFDF0 0%,#FFEFC2 45%,rgba(255,225,150,.0) 72%);
+  box-shadow:0 0 60px 24px rgba(255,236,170,.55), 0 0 160px 80px rgba(255,220,140,.25)}
+.moon{position:absolute;left:14%;top:14%;width:46px;height:46px;border-radius:50%;z-index:2;opacity:0;
+  background:radial-gradient(circle at 62% 38%, #FBF7E8 0%, #E8E4D2 55%, transparent 56%);
+  filter:drop-shadow(0 0 14px rgba(240,240,220,.6))}
+/* 上帝光（跟随正午场景淡出） */
+.rays{position:absolute;inset:-20%;z-index:1;pointer-events:none;opacity:.7;mix-blend-mode:screen;
+  background:repeating-conic-gradient(from 200deg at 78% 12%, rgba(255,244,200,.16) 0deg 3deg, transparent 3deg 9deg);
+  filter:blur(6px)}
+.vignette{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 40%, transparent 58%, rgba(20,28,54,.28) 100%)}
+#dust{position:absolute;inset:0;z-index:2;pointer-events:none}
+
+/* ============ 顶栏 ============ */
+header{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:80;
+  display:flex;align-items:center;gap:24px;
+  padding:10px 12px 10px 22px;border-radius:999px;
+  background:rgba(255,253,247,.66);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.55);
+  box-shadow:0 8px 32px rgba(30,42,74,.18);
+}
+header .logo{font-size:13.5px;letter-spacing:.14em;color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:9px;white-space:nowrap}
+header .logo .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(245,185,90,.8)}
+header nav{display:flex;gap:2px}
+header nav a{
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--ink-soft);
+  text-decoration:none;padding:8px 13px;border-radius:999px;transition:.25s;white-space:nowrap;
+}
+header nav a:hover{color:var(--gold-deep);background:rgba(245,185,90,.16)}
+header .cta{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-decoration:none;
+  color:#3A2A0A;background:linear-gradient(160deg,#FFD79A,#F5B95A);padding:9px 18px;border-radius:999px;
+  display:flex;align-items:center;gap:7px;transition:.25s;white-space:nowrap;
+  box-shadow:0 4px 16px rgba(245,185,90,.45);
+}
+header .cta:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(245,185,90,.6)}
+@media (max-width:820px){ header nav{display:none} header{gap:14px} }
+
+/* ============ 侧边罗盘 ============ */
+#compass{position:fixed;right:20px;top:50%;transform:translateY(-50%);z-index:60;
+  display:flex;flex-direction:column;gap:18px;align-items:center}
+#compass a{display:block;opacity:.5;transition:.3s;position:relative;width:10px;height:10px;border-radius:50%;
+  background:rgba(255,255,255,.75);box-shadow:0 0 8px rgba(255,255,255,.6)}
+#compass a:hover,#compass a.active{opacity:1;transform:scale(1.5);background:var(--gold);box-shadow:0 0 14px rgba(245,185,90,.9)}
+#compass a .clabel{
+  position:absolute;right:26px;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:#FFFDF7;
+  background:rgba(30,42,74,.85);padding:4px 11px;border-radius:999px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:.2s;
+}
+#compass a:hover .clabel{opacity:1}
+@media (max-width:900px){
+  #compass{top:auto;right:50%;bottom:14px;transform:translateX(50%);flex-direction:row;gap:10px;
+    padding:8px 14px;background:rgba(255,253,247,.8);border-radius:999px}
+  #compass a .clabel{display:none}
+}
+
+/* ============ HERO ============ */
+#hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:0 20px}
+#hero::before{ /* 标题柔光罩：把白云压暗，让粒子字浮出来 */
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-52%);
+  width:min(96vw,1150px);height:clamp(240px,36vw,420px);border-radius:50%;
+  background:radial-gradient(ellipse, rgba(13,22,50,.52) 0%, rgba(13,22,50,.28) 55%, transparent 78%);
+  filter:blur(10px);pointer-events:none;
+}
+#hero>*:not(.scroll-pill){position:relative}
+#hero .fig{font-family:var(--mono);font-size:11px;letter-spacing:.42em;color:#FFE9B8;
+  text-shadow:0 2px 14px rgba(10,20,50,.8);margin-bottom:22px}
+#particleTitle{display:block;width:min(92vw,1100px);height:clamp(70px,13vw,150px);cursor:crosshair}
+#hero .sub{margin-top:26px;color:#FFF;text-shadow:0 2px 18px rgba(10,20,50,.9);
+  font-size:clamp(14px,1.6vw,18px);letter-spacing:.28em;font-weight:400;text-align:center}
+#hero .sub b{color:#FFE9B8;font-weight:500}
+.scroll-pill{
+  position:absolute;bottom:38px;left:50%;transform:translateX(-50%);z-index:20;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:var(--ink);
+  border:1px solid rgba(255,255,255,.7);border-radius:999px;padding:10px 22px;
+  background:rgba(255,253,247,.55);backdrop-filter:blur(8px);text-decoration:none;
+  animation:bob 2.6s ease-in-out infinite;
+}
+.scroll-pill b{color:var(--gold-deep);font-weight:400}
+@keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,7px)}}
+
+/* ============ 章节字幕（新海诚式叙事行） ============ */
+.chapter{position:relative;z-index:10;padding:19vh 24px 8vh;text-align:center}
+.chapter .no{font-family:var(--mono);font-size:11px;letter-spacing:.5em;color:var(--gold-deep);
+  display:inline-block;background:rgba(255,253,247,.72);padding:6px 18px;border-radius:999px;margin-bottom:22px}
+.chapter p{
+  font-size:clamp(24px,3.6vw,42px);font-weight:300;letter-spacing:.14em;line-height:1.5;
+  color:#FFF;text-shadow:0 2px 22px rgba(15,25,55,.85), 0 0 60px rgba(15,25,55,.4);
+}
+.chapter p em{font-style:normal;color:#FFE9B8}
+
+/* ============ 通用版面 ============ */
+section{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:40px 32px 60px}
+.sec-tag{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--gold-deep);display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.sec-tag::after{content:"";flex:1;height:1px;background:rgba(30,42,74,.25)}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:14px;flex-wrap:wrap}
+.sec-head h2{font-size:clamp(32px,4.4vw,52px);font-weight:700;letter-spacing:.04em;line-height:1.15;
+  color:var(--ink);text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.sec-head .en{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--ink-soft)}
+.sec-sub{color:var(--ink-soft);font-size:15px;letter-spacing:.06em;max-width:640px;line-height:1.9;margin-bottom:52px}
+.sec-sub b{color:var(--gold-deep);font-weight:600}
+
+/* ============ FIG.1 Skill 图鉴（星球窗口） ============ */
+.dex-wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+.dex-sticky{position:sticky;top:96px;height:calc(100vh - 150px);min-height:480px;max-height:660px}
+.dex-panel{
+  height:100%;border-radius:26px;
+  background:linear-gradient(165deg,#101838 0%,#0A0F22 70%);
+  border:1px solid rgba(245,185,90,.4);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;padding:26px 28px 24px;
+  box-shadow:0 30px 90px rgba(15,22,50,.55), 0 0 60px rgba(245,185,90,.12),
+             inset 0 1px 0 rgba(255,255,255,.08);
+}
+.dex-panel .grid-bg{position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(245,185,90,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(245,185,90,.14) 1px,transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 42%,#000 30%,transparent 78%);
+          mask-image:radial-gradient(ellipse at 50% 42%,#000 30%,transparent 78%);}
+.dex-panel-top{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
+.dex-panel-top .no{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:#B9C4E4}
+.dex-panel-top .rare{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#FFD79A;
+  border:1px solid rgba(245,185,90,.5);border-radius:999px;padding:4px 13px;background:rgba(245,185,90,.12)}
+.dex-panel-fig{flex:1;display:flex;align-items:center;justify-content:center;position:relative;z-index:2;min-height:0}
+.planet-layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  opacity:0;transform:scale(.94) translateY(12px);pointer-events:none}
+.planet-layer.active{opacity:1;transform:none;pointer-events:auto;animation:planetIn .5s cubic-bezier(.22,1,.36,1)}
+@keyframes planetIn{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:none}}
+.planet-stage{position:relative;width:min(58%,250px);aspect-ratio:1;animation:floaty 7s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.planet{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:2;
+  transform:rotate(-14deg);
+  box-shadow:0 0 46px rgba(200,246,93,.22), 0 0 110px rgba(160,220,255,.10), inset 0 0 44px rgba(0,0,0,.3)}
+.planet .tex{position:absolute;top:0;left:0;height:100%;width:200%;
+  background-image:var(--tex);background-size:50% 100%;background-repeat:repeat-x;
+  animation:spinTex var(--spin,28s) linear infinite}
+@keyframes spinTex{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.planet .shade{position:absolute;inset:0;border-radius:50%;
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255,255,240,.16), transparent 45%),
+    linear-gradient(100deg, transparent 42%, rgba(4,7,18,.55) 78%),
+    radial-gradient(circle at 50% 50%, transparent 52%, rgba(4,7,18,.55) 82%, rgba(2,4,12,.95) 100%)}
+.planet-ring,.planet-ring-front{position:absolute;left:50%;top:50%;width:168%;height:54%;z-index:1;
+  border:2px solid rgba(255,215,154,.45);border-radius:50%;
+  box-shadow:0 0 18px rgba(255,215,154,.25), inset 0 0 18px rgba(255,215,154,.15);
+  transform:translate(-50%,-50%) rotate(-16deg)}
+.planet-ring-front{z-index:3;clip-path:inset(54% 0 0 0)}
+.moon-orbit{position:absolute;inset:-13%;z-index:3;animation:orbit 16s linear infinite;pointer-events:none}
+.moon-orbit .moon-dot{position:absolute;top:0;left:50%;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;
+  background:#DFF5B8;box-shadow:0 0 12px rgba(255,236,170,.9)}
+.moon-orbit .moon-dot.m2{top:auto;bottom:5%;left:13%;width:6px;height:6px;opacity:.65}
+@keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.planet-layer .leader{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;color:#8B97BE;text-align:center}
+.dex-count{position:absolute;top:24px;right:28px;z-index:1;font-family:var(--mono);
+  font-size:64px;font-weight:800;color:transparent;-webkit-text-stroke:1px rgba(245,185,90,.3);line-height:1;pointer-events:none}
+.dex-panel-bottom{position:relative;z-index:2;border-top:1px solid rgba(245,185,90,.25);padding-top:18px}
+.dex-panel-bottom h3{font-family:var(--mono);font-size:clamp(17px,1.8vw,22px);font-weight:700;letter-spacing:.02em;margin-bottom:12px}
+.dex-panel-bottom h3 a{color:#F2F5FF;text-decoration:none;transition:.2s}
+.dex-panel-bottom h3 a:hover{color:#FFD79A}
+.dex-panel-bottom .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.dex-type span{display:inline-block;border:1px solid rgba(255,255,255,.18);border-radius:999px;
+  font-family:var(--mono);font-size:10.5px;padding:3px 12px;margin-right:6px;letter-spacing:.1em;color:#B9C4E4}
+.dex-meta{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:#8B97BE}
+.dex-meta a{color:#FFD79A;text-decoration:none}
+.dex-meta a:hover{text-decoration:underline}
+
+.dex-steps{display:flex;flex-direction:column}
+.dex-step{min-height:78vh;display:flex;flex-direction:column;justify-content:center;
+  opacity:.3;transition:opacity .45s ease, transform .45s ease;transform:translateY(10px)}
+.dex-step.active{opacity:1;transform:none}
+.dex-step .idx{font-family:var(--mono);font-size:13px;letter-spacing:.24em;color:var(--gold-deep);margin-bottom:14px}
+.dex-step h3{font-family:var(--mono);font-size:clamp(20px,2.2vw,27px);font-weight:700;margin-bottom:8px;letter-spacing:.01em}
+.dex-step h3 a{color:var(--ink);text-decoration:none}
+.dex-step h3 a:hover{color:var(--gold-deep)}
+.dex-step .type{display:flex;gap:6px;margin:10px 0 20px}
+.dex-step .type span{border:1px solid rgba(30,42,74,.3);border-radius:999px;font-family:var(--mono);
+  font-size:10.5px;padding:3px 12px;letter-spacing:.1em;color:var(--ink-soft);background:rgba(255,253,247,.5)}
+.dex-step ul{list-style:none}
+.dex-step li{padding:9px 0 9px 26px;position:relative;color:var(--ink-soft);font-size:14.5px;line-height:1.75;
+  border-bottom:1px dashed rgba(30,42,74,.25)}
+.dex-step li b{color:var(--ink);font-weight:600}
+.dex-step li::before{content:"";position:absolute;left:2px;top:19px;width:10px;height:10px;
+  border:1.5px solid var(--gold-deep);border-radius:3px;transform:rotate(45deg)}
+.dex-step .meta{margin-top:18px;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--ink-soft)}
+.dex-step .meta a{color:var(--gold-deep);text-decoration:none;border-bottom:1px dotted rgba(180,118,42,.5)}
+@media (max-width:960px){
+  .dex-wrap{grid-template-columns:1fr}
+  .dex-sticky{display:none}
+  .dex-step{min-height:auto;padding:40px 0;opacity:1;transform:none}
+}
+
+/* ============ FIG.2 手记：云上信笺（堆叠） ============ */
+/* 手记区天空已入夜，标题用浅色系 */
+#notes .sec-tag{color:#FFD79A}
+#notes .sec-tag::after{background:rgba(255,255,255,.25)}
+#notes .sec-head h2{color:#FFF;text-shadow:0 2px 24px rgba(8,12,30,.9)}
+#notes .sec-head .en{color:#B9C4E4}
+#notes .sec-sub{color:#C9D2EA}
+#notes .sec-sub b{color:#FFD79A}
+.notes-stack{position:relative}
+.note-card{
+  position:sticky;top:calc(90px + var(--i)*18px);
+  background:var(--paper);color:#22304F;border-radius:8px;
+  padding:32px 36px 26px;margin-bottom:32px;
+  display:grid;grid-template-columns:150px 1fr;gap:26px;
+  text-decoration:none;
+  box-shadow:0 24px 60px rgba(20,32,64,.35), 0 4px 14px rgba(20,32,64,.18);
+  transition:transform .3s, box-shadow .3s;
+}
+.note-card::before{ /* 和纸胶带 */
+  content:"";position:absolute;top:-13px;left:50%;transform:translateX(-50%) rotate(-2deg);
+  width:120px;height:26px;background:rgba(245,185,90,.45);
+  box-shadow:0 2px 8px rgba(120,80,20,.15);
+}
+.note-card:nth-child(2n)::before{transform:translateX(-50%) rotate(1.6deg)}
+.note-card:nth-child(odd){transform:rotate(-.5deg)}
+.note-card:nth-child(even){transform:rotate(.45deg)}
+.note-card:hover{transform:rotate(0) translateY(-4px);box-shadow:0 30px 70px rgba(20,32,64,.42), 0 6px 18px rgba(20,32,64,.2)}
+.note-card .stamp{font-family:var(--mono);font-size:11px;color:#8A93AC;line-height:2;letter-spacing:.08em}
+.note-card .stamp .date{display:block;font-size:16px;color:var(--gold-deep);letter-spacing:.04em;margin-bottom:6px}
+.note-card h3{font-size:19px;font-weight:700;letter-spacing:.03em;margin-bottom:10px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.note-card h3 .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--gold-deep);text-transform:uppercase;
+  border:1px solid rgba(180,118,42,.4);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.note-card p{font-size:14px;line-height:1.9;color:#4A5878}
+.note-card p b{color:#22304F}
+.note-card .obs{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(30,42,74,.2);
+  font-size:12.5px;color:var(--gold-deep);letter-spacing:.04em}
+.note-card .obs::before{content:"观察结论 → ";letter-spacing:.1em}
+.note-card .more{position:absolute;right:30px;top:30px;font-family:var(--mono);font-size:16px;color:var(--gold-deep);opacity:0;transition:.25s}
+.note-card:hover .more{opacity:1;right:24px}
+@media (max-width:760px){ .note-card{grid-template-columns:1fr;padding:24px} }
+
+/* ============ FIG.3 在研装置（黄昏玻璃卡） ============ */
+#works .sec-tag{color:#FFD79A}
+#works .sec-tag::after{background:rgba(255,255,255,.25)}
+#works .sec-head h2{color:#FFF;text-shadow:0 2px 24px rgba(8,12,30,.9)}
+#works .sec-head .en{color:#B9C4E4}
+#works .sec-sub{color:#C9D2EA}
+#works .sec-sub b{color:#FFD79A}
+.work-list{border-top:1px solid rgba(255,255,255,.18)}
+.work-row{
+  display:grid;grid-template-columns:120px 1fr auto;gap:30px;align-items:center;
+  padding:40px 22px;border-bottom:1px solid rgba(255,255,255,.16);position:relative;
+  text-decoration:none;transition:background .35s;
+  background:linear-gradient(90deg,rgba(13,18,38,.42),rgba(13,18,38,.18));
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.work-row::after{content:"↗";font-family:var(--mono);font-size:26px;color:#FFD79A;
+  position:absolute;right:26px;top:50%;transform:translate(12px,-50%);opacity:0;transition:.3s}
+.work-row:hover{background:linear-gradient(90deg,rgba(245,185,90,.22),rgba(13,18,38,.18))}
+.work-row:hover::after{opacity:1;transform:translate(0,-50%)}
+.work-row .num{font-family:var(--mono);font-size:15px;letter-spacing:.2em;color:#FFD79A}
+.work-row .num small{display:block;font-size:10px;color:#8B97BE;margin-top:6px;letter-spacing:.14em}
+.work-row h3{font-size:clamp(20px,2.6vw,30px);font-weight:800;letter-spacing:.02em;margin-bottom:10px;color:#FFF}
+.work-row p{font-size:14px;line-height:1.85;color:#C9D2EA;max-width:640px}
+.work-row p b{color:#FFF}
+.work-row .tags{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.work-row .tags span{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:#C9D2EA;
+  border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:4px 13px}
+.work-row .repo{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:#8B97BE;
+  text-align:right;max-width:180px;line-height:1.8}
+.work-row .repo a{color:#FFD79A;text-decoration:none}
+.work-row .repo a:hover{text-decoration:underline}
+@media (max-width:860px){
+  .work-row{grid-template-columns:1fr;gap:14px;padding:34px 14px}
+  .work-row .repo{text-align:left;max-width:none}
+  .work-row::after{display:none}
+}
+
+/* ============ 页脚 ============ */
+footer{position:relative;z-index:10;padding:130px 32px 70px;max-width:1200px;margin:0 auto;text-align:center}
+.footer-giant{
+  font-size:clamp(38px,8.5vw,116px);font-weight:800;line-height:1.1;letter-spacing:-.01em;
+  background:linear-gradient(180deg,#FFF6DC 10%,#FFD79A 55%,#F5B95A 90%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 26px rgba(245,185,90,.35));
+  margin-bottom:60px;user-select:none;cursor:default;
+}
+.colophon .cat{font-family:var(--mono);font-size:11px;letter-spacing:.45em;color:#FFD79A;margin-bottom:14px}
+.colophon .who{font-size:16px;letter-spacing:.12em;color:#FFF;margin-bottom:8px;text-shadow:0 2px 14px rgba(8,12,30,.9)}
+.colophon .meta{font-family:var(--mono);font-size:11.5px;color:#B9C4E4;letter-spacing:.16em;line-height:2.2}
+.colophon .meta a{color:#E8ECF8;text-decoration:none}
+.colophon .meta a:hover{color:#FFD79A}
+.colophon .love{display:inline-block;margin-top:26px;border:1px solid rgba(245,185,90,.55);
+  border-radius:999px;padding:8px 26px;font-family:var(--mono);font-size:11.5px;
+  letter-spacing:.3em;color:#FFD79A;background:rgba(13,18,38,.5)}
+.colophon .tbc{margin-top:34px;font-family:var(--mono);font-size:10.5px;letter-spacing:.4em;color:rgba(255,255,255,.45)}
+</style>
+</head>
+<body>
+
+<!-- 天空舞台 -->
+<div id="skyStage" aria-hidden="true">
+  <div class="scene s-noon" id="scNoon"></div>
+  <div class="scene s-gold" id="scGold"></div>
+  <div class="scene s-dusk" id="scDusk"></div>
+  <div class="rays" id="rays"></div>
+  <div class="sun" id="sun"></div>
+  <div class="moon" id="moon"></div>
+  <canvas id="dust"></canvas>
+  <div class="vignette"></div>
+</div>
+
+<!-- 顶栏 -->
+<header>
+  <a class="logo" href="#hero"><span class="dot"></span>余小莫的星空观察台</a>
+  <nav>
+    <a href="#dex">SKILL DEX</a>
+    <a href="#notes">FIELD NOTES</a>
+    <a href="#works">WORKS</a>
+  </nav>
+  <a class="cta" href="https://github.com/rcrusoe88-bot" target="_blank" rel="noopener">LET'S TALK ↗</a>
+</header>
+
+<!-- 侧边罗盘 -->
+<nav id="compass" aria-label="页面章节导航">
+  <a href="#dex" data-sec="dex"><span class="clabel">图鉴座 · Skill</span></a>
+  <a href="#notes" data-sec="notes"><span class="clabel">手记座 · Notes</span></a>
+  <a href="#works" data-sec="works"><span class="clabel">装置座 · Works</span></a>
+</nav>
+
+<!-- ================= HERO ================= -->
+<div id="hero">
+  <div class="fig mono">LAB NOTEBOOK · PORTFOLIO EDITION</div>
+  <canvas id="particleTitle" aria-label="余小莫的星空观察台"></canvas>
+  <p class="sub">mRNA-LNP 研究员 × Agent 造物者 · <b class="mono">vibe coding for LOVE</b></p>
+  <a class="scroll-pill" href="#ch1">SCROLL INTO THE STORY <b>↓</b></a>
+</div>
+
+<!-- 章节字幕 1 -->
+<div class="chapter" id="ch1">
+  <span class="no mono">第一章 · 离天空最近的地方</span>
+  <p>那天的积雨云堆得比楼还高，<br>我在云的影子下<em>写代码</em>。</p>
+</div>
+
+<!-- ================= FIG.1 Skill 图鉴 ================= -->
+<section id="dex">
+  <div class="sec-tag mono">FIG. 1 · OPEN-SOURCE SKILL DEX</div>
+  <div class="sec-head">
+    <h2>开源 Skill 图鉴</h2>
+    <span class="en">SIX PLANETS · 观测于 2026-09-03</span>
+  </div>
+  <p class="sec-sub">白天仰望星空的人，把六件原创 Skill 铸成了<b>六颗行星</b>。向下滑动，左侧的舷窗会切换到正在讲述的那一颗。</p>
+
+  <div class="dex-wrap">
+    <div class="dex-sticky">
+      <div class="dex-panel">
+        <div class="grid-bg"></div>
+        <div class="dex-count mono" id="dexCount">01</div>
+        <div class="dex-panel-top">
+          <span class="no" id="dexNo">No.001</span>
+          <span class="rare" id="dexRare">★★★ 稀有</span>
+        </div>
+        <div class="dex-panel-fig" id="dexFig">
+          <div class="planet-layer active" data-idx="0">
+            <div class="planet-stage">
+              <div class="planet" style="--tex:url('assets/planets/planet-1-gas.jpg');--spin:26s"><div class="tex"></div><div class="shade"></div></div>
+            </div>
+            <div class="leader mono">PLANET 1A · 言灵巨星 — 气态风暴带</div>
+          </div>
+          <div class="planet-layer" data-idx="1">
+            <div class="planet-stage">
+              <div class="planet" style="--tex:url('assets/planets/planet-2-lava.jpg');--spin:34s"><div class="tex"></div><div class="shade"></div></div>
+            </div>
+            <div class="leader mono">PLANET 1B · 熔炼星 — 能量熔流河</div>
+          </div>
+          <div class="planet-layer" data-idx="2">
+            <div class="planet-stage">
+              <div class="planet-ring"></div>
+              <div class="planet" style="--tex:url('assets/planets/planet-3-ice.jpg');--spin:40s"><div class="tex"></div><div class="shade"></div></div>
+              <div class="planet-ring-front"></div>
+            </div>
+            <div class="leader mono">PLANET 1C · 冰晶星 — 环带冰川</div>
+          </div>
+          <div class="planet-layer" data-idx="3">
+            <div class="planet-stage">
+              <div class="planet" style="--tex:url('assets/planets/planet-4-crater.jpg');--spin:30s"><div class="tex"></div><div class="shade"></div></div>
+              <div class="moon-orbit"><span class="moon-dot"></span><span class="moon-dot m2"></span></div>
+            </div>
+            <div class="leader mono">PLANET 1D · 陨检星 — 双子卫星</div>
+          </div>
+          <div class="planet-layer" data-idx="4">
+            <div class="planet-stage">
+              <div class="planet" style="--tex:url('assets/planets/planet-5-terra.jpg');--spin:36s"><div class="tex"></div><div class="shade"></div></div>
+            </div>
+            <div class="leader mono">PLANET 1E · 梯田星 — 等高线田貌</div>
+          </div>
+          <div class="planet-layer" data-idx="5">
+            <div class="planet-stage">
+              <div class="planet" style="--tex:url('assets/planets/planet-6-jungle.jpg');--spin:22s"><div class="tex"></div><div class="shade"></div></div>
+            </div>
+            <div class="leader mono">PLANET 1F · 荧林星 — 荧光林冠</div>
+          </div>
+        </div>
+        <div class="dex-panel-bottom">
+          <h3><a id="dexLink" href="#" target="_blank" rel="noopener">wechat-title-summary</a></h3>
+          <div class="row">
+            <div class="dex-type" id="dexType"><span>文案系</span><span>Shell</span></div>
+            <div class="dex-meta"><span id="dexMeta">语言: Shell · ★ 1</span> · <a id="dexRepo" href="#" target="_blank" rel="noopener">github ↗</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dex-steps" id="dexSteps">
+      <div class="dex-step" data-idx="0" data-no="No.001" data-rare="★★★ 稀有" data-name="wechat-title-summary"
+           data-href="https://github.com/rcrusoe88-bot/wechat-title-summary" data-meta="语言: Shell · ★ 1" data-count="01">
+        <div class="idx">01 / 06</div>
+        <h3><a href="https://github.com/rcrusoe88-bot/wechat-title-summary" target="_blank" rel="noopener">wechat-title-summary</a></h3>
+        <div class="type"><span>文案系</span><span>生成为主</span><span>Shell</span></div>
+        <ul>
+          <li><b>技能① 三套方案</b> — 报道/叙事/疑问/观点/方法链，差异化标题+摘要</li>
+          <li><b>技能② 字数契约</b> — 标题≤40字、摘要≤120字，自动标注实数字数</li>
+          <li><b>技能③ 封面咏唱</b> — 4套风格 Prompt（学术机制图/手绘/顶刊/粘土）</li>
+        </ul>
+        <div class="meta">语言: Shell · ★ 1 · <a href="https://github.com/rcrusoe88-bot/wechat-title-summary" target="_blank" rel="noopener">github ↗</a></div>
+      </div>
+      <div class="dex-step" data-idx="1" data-no="No.002" data-rare="★★ 精良" data-name="wechat-article-html"
+           data-href="https://github.com/rcrusoe88-bot/wechat-article-html" data-meta="语言: Python · ★ 0" data-count="02">
+        <div class="idx">02 / 06</div>
+        <h3><a href="https://github.com/rcrusoe88-bot/wechat-article-html" target="_blank" rel="noopener">wechat-article-html</a></h3>
+        <div class="type"><span>转化系</span><span>Python</span></div>
+        <ul>
+          <li><b>技能① 多源炼金</b> — Word/Markdown/纯文本 → 公众号全内联 HTML</li>
+          <li><b>技能② 十相主题</b> — 10 套主题，兼容旧 orange/blue/nature/morandi</li>
+          <li><b>技能③ 原生字体</b> — --wechat 严格全内联，转后契约自动校验</li>
+        </ul>
+        <div class="meta">语言: Python · ★ 0 · <a href="https://github.com/rcrusoe88-bot/wechat-article-html" target="_blank" rel="noopener">github ↗</a></div>
+      </div>
+      <div class="dex-step" data-idx="2" data-no="No.003" data-rare="★★★ 稀有" data-name="wechat-cover-design"
+           data-href="https://github.com/rcrusoe88-bot/wechat-cover-design" data-meta="语言: Python · ★ 0" data-count="03">
+        <div class="idx">03 / 06</div>
+        <h3><a href="https://github.com/rcrusoe88-bot/wechat-cover-design" target="_blank" rel="noopener">wechat-cover-design</a></h3>
+        <div class="type"><span>设计系</span><span>Python</span></div>
+        <ul>
+          <li><b>技能① 十三主题</b> — 按文章论点（非关键词）选 13 套生物制药视觉</li>
+          <li><b>技能② 稳定版式</b> — 固定左标题区+字体规则，输出不跑版</li>
+          <li><b>技能③ 双路径</b> — 直接生图 或 无字底图+精确叠字规范</li>
+        </ul>
+        <div class="meta">语言: Python · ★ 0 · <a href="https://github.com/rcrusoe88-bot/wechat-cover-design" target="_blank" rel="noopener">github ↗</a></div>
+      </div>
+      <div class="dex-step" data-idx="3" data-no="No.004" data-rare="★★★ 稀有" data-name="mrna-cmc-web-search"
+           data-href="https://github.com/rcrusoe88-bot/mrna-cmc-web-search" data-meta="领域: 生物制药 CMC · ★ 0" data-count="04">
+        <div class="idx">04 / 06</div>
+        <h3><a href="https://github.com/rcrusoe88-bot/mrna-cmc-web-search" target="_blank" rel="noopener">mrna-cmc-web-search</a></h3>
+        <div class="type"><span>检索系</span><span>CMC</span></div>
+        <ul>
+          <li><b>技能① 来源发现</b> — mRNA IVT / 靶向 LNP / in vivo CAR-T 定向检索</li>
+          <li><b>技能② 真实核验</b> — 溯源至一手文献，剔除幻觉引用</li>
+          <li><b>技能③ 打包交付</b> — 带证据标签的研究就绪输出（不写文章）</li>
+        </ul>
+        <div class="meta">领域: 生物制药 CMC · ★ 0 · <a href="https://github.com/rcrusoe88-bot/mrna-cmc-web-search" target="_blank" rel="noopener">github ↗</a></div>
+      </div>
+      <div class="dex-step" data-idx="4" data-no="No.005" data-rare="★★ 精良" data-name="personal-resume"
+           data-href="https://github.com/rcrusoe88-bot/personal-resume" data-meta="语言: HTML · ★ 0" data-count="05">
+        <div class="idx">05 / 06</div>
+        <h3><a href="https://github.com/rcrusoe88-bot/personal-resume" target="_blank" rel="noopener">personal-resume</a></h3>
+        <div class="type"><span>工具系</span><span>HTML</span></div>
+        <ul>
+          <li><b>技能① 双视觉系</b> — 楷体雅致 + 霞鹜致宋（7 套版式）</li>
+          <li><b>技能② 模板矩阵</b> — 8 套模板 × 12 种配色，A4 标准尺寸</li>
+          <li><b>技能③ 隐私优先</b> — 本地处理，分节完整性自动引导</li>
+        </ul>
+        <div class="meta">语言: HTML · ★ 0 · <a href="https://github.com/rcrusoe88-bot/personal-resume" target="_blank" rel="noopener">github ↗</a></div>
+      </div>
+      <div class="dex-step" data-idx="5" data-no="No.006" data-rare="★★ 精良" data-name="ppt-requirements-discovery"
+           data-href="https://github.com/rcrusoe88-bot/ppt-requirements-discovery" data-meta="宿主: Codex/Claude · ★ 0" data-count="06">
+        <div class="idx">06 / 06</div>
+        <h3><a href="https://github.com/rcrusoe88-bot/ppt-requirements-discovery" target="_blank" rel="noopener">ppt-requirements-discovery</a></h3>
+        <div class="type"><span>访谈系</span><span>Codex</span></div>
+        <ul>
+          <li><b>技能① 多轮访谈</b> — 不投长问卷，每轮只问最关键问题</li>
+          <li><b>技能② 先问为什么</b> — 澄清场景/听众/目标，再谈页数风格</li>
+          <li><b>技能③ 冲突诊断</b> — 主动发现需求矛盾，只做需求发现</li>
+        </ul>
+        <div class="meta">宿主: Codex/Claude · ★ 0 · <a href="https://github.com/rcrusoe88-bot/ppt-requirements-discovery" target="_blank" rel="noopener">github ↗</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 章节字幕 2 -->
+<div class="chapter" id="ch2">
+  <span class="no mono">第二章 · 写给未来的信</span>
+  <p>排障的顿悟、深夜的根因，<br>都被我折成<em>信笺</em>，寄给未来的自己。</p>
+</div>
+
+<!-- ================= FIG.2 手记 ================= -->
+<section id="notes">
+  <div class="sec-tag mono">FIG. 2 · FIELD NOTES ON AGENTS</div>
+  <div class="sec-head">
+    <h2>Agent 使用手记</h2>
+    <span class="en">LETTERS TO THE FUTURE</span>
+  </div>
+  <p class="sec-sub">每一次排障与顿悟，都是一封<b>云上信笺</b>。向下滚动，信会像被风翻开一样，一封封叠上来。</p>
+
+  <div class="notes-stack">
+    <a class="note-card" style="--i:0" href="notes/2026-09-04-personal-workstation.html">
+      <div class="stamp"><span class="date">2026.09.04</span>WorkBuddy<br>腾讯混元大模型</div>
+      <div>
+        <h3>余小莫的个人工作站设计 <span class="tag">Zine</span></h3>
+        <p>一份 zine 风个人档案：从 70+ 想法收敛到三个 IP 因子，全程无设计类 Skill 参与。好设计不是"让 AI 出图"，而是把<b>"想要什么样的自己"讲清楚</b>，再走完广撒网 → 强身份 → 精打磨。</p>
+        <div class="obs">把"想要什么样的自己"讲清楚，再动手。</div>
+      </div>
+      <span class="more">→</span>
+    </a>
+    <a class="note-card" style="--i:1" href="notes/2026-08-20-browser-automation.html">
+      <div class="stamp"><span class="date">2026.08.20</span>WorkBuddy + bsk<br>微信后台</div>
+      <div>
+        <h3>浏览器自动化：DOM 文本比截图可靠 <span class="tag">Automation</span></h3>
+        <p>让 Agent 抓公众号后台数据，canvas 图表页截图持续失败，改用 evaluate 直读 innerText 一次拿到全部数字。Agent 操作网页，<b>「读 DOM」优先于「看截图」</b>；视觉是给人的，结构是给 Agent 的。</p>
+        <div class="obs">视觉是给人的，结构是给 Agent 的。</div>
+      </div>
+      <span class="more">→</span>
+    </a>
+    <a class="note-card" style="--i:2" href="notes/2026-08-18-docx-image-embed.html">
+      <div class="stamp"><span class="date">2026.08.18</span>python-docx<br>Elsevier PDF</div>
+      <div>
+        <h3>一次图片嵌入失败的解剖排障 <span class="tag">Debug</span></h3>
+        <p>期刊 PDF 提取的 JPEG 嵌入 docx 报 UnrecognizedImageError。根因 Adobe APP14 头，python-docx 只认 JFIF，PIL 转存即愈。<b>报错信息只指到门口</b>，真正的根因常在文件头的两个字节里。</p>
+        <div class="obs">根因常在文件头的那两个字节里。</div>
+      </div>
+      <span class="more">→</span>
+    </a>
+    <a class="note-card" style="--i:3" href="notes/2026-08-12-revocation-install.html">
+      <div class="stamp"><span class="date">2026.08.12</span>Windows + Git Bash<br>GitHub raw</div>
+      <div>
+        <h3>吊销检查引发的安装悬案 <span class="tag">TLS</span></h3>
+        <p>curl 抓 raw.githubusercontent 反复报 CRYPT_E_REVOCATION_OFFLINE。换托管 Python 的 urllib（OpenSSL 不做 Windows 吊销检查）一次通过。同一份代码，换一条 TLS 栈，结论完全不同——<b>排查时先怀疑环境，再怀疑自己</b>。</p>
+        <div class="obs">先怀疑环境，再怀疑自己。</div>
+      </div>
+      <span class="more">→</span>
+    </a>
+  </div>
+</section>
+
+<!-- 章节字幕 3 -->
+<div class="chapter" id="ch3">
+  <span class="no mono">第三章 · 黄昏时分</span>
+  <p>太阳落下去的时候，<br>小镇的灯和<em>我的装置</em>一起亮了。</p>
+</div>
+
+<!-- ================= FIG.3 在研装置 ================= -->
+<section id="works">
+  <div class="sec-tag mono">FIG. 3 · APPARATUS UNDER DEVELOPMENT</div>
+  <div class="sec-head">
+    <h2>在研装置</h2>
+    <span class="en">LIGHTS ON AT DUSK</span>
+  </div>
+  <p class="sec-sub">从一行 prompt 到一个上线的产品——<b>在任何尺度上交付精确</b>。</p>
+
+  <div class="work-list">
+    <div class="work-row">
+      <div class="num">01<small>FIG. 4A</small></div>
+      <div>
+        <h3>Materia ERP 物料管理系统</h3>
+        <p>面向 <b>mRNA/LNP 生产</b> 的物料出入库、批次追溯与效期管理。以实验记录本的严谨对待每一支原料——批号即血脉，效期即戒律。</p>
+        <div class="tags"><span>React</span><span>NestJS</span><span>PostgreSQL</span><span>腾讯云</span></div>
+      </div>
+      <div class="repo"><a href="https://github.com/rcrusoe88-bot/wsj-erp-system" target="_blank" rel="noopener">源码 ↗<br>github.com/rcrusoe88-bot/wsj-erp-system</a></div>
+    </div>
+    <div class="work-row">
+      <div class="num">02<small>FIG. 4B</small></div>
+      <div>
+        <h3>sci-library 文献分发小程序</h3>
+        <p>SCI 文献每日滚动的微信小程序，<b>微信云开发免费版</b>架构。把文献情报 Agent 的产出，装进每个科研人的口袋。</p>
+        <div class="tags"><span>微信小程序</span><span>云开发</span><span>文献情报</span></div>
+      </div>
+      <div class="repo">内测中 · 敬请期待</div>
+    </div>
+    <div class="work-row">
+      <div class="num">03<small>FIG. 4C</small></div>
+      <div>
+        <h3>yuxiaomo-ai-notes</h3>
+        <p>AI 学习笔记静态站，<b>Next.js 静态导出 + GitHub Pages</b>。所有与 Agent 协作的心得，先在这里沉淀，再流向图鉴与手记。</p>
+        <div class="tags"><span>Next.js</span><span>静态博客</span><span>GitHub Pages</span></div>
+      </div>
+      <div class="repo"><a href="https://github.com/rcrusoe88-bot/yuxiaomo-ai-notes" target="_blank" rel="noopener">源码 ↗<br>github.com/rcrusoe88-bot/yuxiaomo-ai-notes</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 页脚 ================= -->
+<footer>
+  <div class="footer-giant">vibe coding<br>for LOVE</div>
+  <div class="colophon">
+    <div class="cat mono">星 表 落 款 · STAR CATALOGUE</div>
+    <div class="who">观测者 余小莫</div>
+    <div class="meta">
+      编号 YXM-2026-001 · 初次观测 <span id="signDate"></span><br>
+      坐标 <a href="https://github.com/rcrusoe88-bot" target="_blank" rel="noopener">github.com/rcrusoe88-bot</a> · 本星表持续生长
+    </div>
+    <div class="love mono">vibe coding for LOVE</div>
+    <div class="tbc mono">— 故事未完待续 · TO BE CONTINUED —</div>
+  </div>
+</footer>
+
+<script>
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const smooth=(p,a,b)=>{const t=clamp((p-a)/(b-a),0,1);return t*t*(3-2*t);};
+
+/* 页脚日期 */
+const signNow = new Date();
+document.getElementById('signDate').textContent =
+  `${signNow.getFullYear()}.${String(signNow.getMonth()+1).padStart(2,'0')}.${String(signNow.getDate()).padStart(2,'0')}`;
+
+/* ============ 换幕：滚动即时间 ============ */
+const scNoon=document.getElementById('scNoon'), scGold=document.getElementById('scGold'), scDusk=document.getElementById('scDusk');
+const sun=document.getElementById('sun'), moon=document.getElementById('moon'), rays=document.getElementById('rays');
+let skyDirty=true, lastP=-1;
+function skyTick(){
+  skyDirty=false;
+  const max=document.documentElement.scrollHeight-innerHeight;
+  const p=max>0?clamp(scrollY/max,0,1):0;
+  if (Math.abs(p-lastP)<0.001) return;
+  lastP=p;
+  scNoon.style.opacity=1-smooth(p,.06,.30);
+  scGold.style.opacity=smooth(p,.14,.34)*(1-smooth(p,.50,.72));
+  scDusk.style.opacity=smooth(p,.58,.80);
+  sun.style.top=(16+p*46)+'%';
+  sun.style.opacity=1-smooth(p,.42,.58);
+  rays.style.opacity=(1-smooth(p,.25,.45))*.7;
+  moon.style.opacity=smooth(p,.60,.78);
+}
+addEventListener('scroll',()=>{ if(!skyDirty){skyDirty=true;requestAnimationFrame(skyTick);} },{passive:true});
+addEventListener('resize',()=>{ skyDirty=true; requestAnimationFrame(skyTick); });
+skyTick();
+
+/* ============ 罗盘 scroll-spy ============ */
+const compassLinks = document.querySelectorAll('#compass a');
+const spy = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (en.isIntersecting) compassLinks.forEach(a => a.classList.toggle('active', a.dataset.sec === en.target.id));
+  });
+}, { rootMargin: '-40% 0px -50% 0px' });
+['dex','notes','works'].forEach(id => spy.observe(document.getElementById(id)));
+
+/* ============ FIG.1 Sticky 行星切换 ============ */
+(function(){
+  const steps = document.querySelectorAll('.dex-step');
+  const figHost = document.getElementById('dexFig');
+  const layers = figHost.querySelectorAll('.planet-layer');
+  const el = id => document.getElementById(id);
+  let currentIdx = -1;
+  function activate(step){
+    const idx = +step.dataset.idx;
+    if (idx === currentIdx) return;
+    currentIdx = idx;
+    steps.forEach(s => s.classList.toggle('active', s === step));
+    layers.forEach(l => l.classList.toggle('active', +l.dataset.idx === idx));
+    el('dexNo').textContent = step.dataset.no;
+    el('dexRare').textContent = step.dataset.rare;
+    el('dexCount').textContent = step.dataset.count;
+    const link = el('dexLink'), repo = el('dexRepo');
+    link.textContent = step.dataset.name; link.href = step.dataset.href;
+    repo.href = step.dataset.href;
+    el('dexMeta').textContent = step.dataset.meta;
+    const typeHost = el('dexType');
+    typeHost.innerHTML = '';
+    step.querySelectorAll('.type span').forEach(sp => {
+      const n = document.createElement('span'); n.textContent = sp.textContent;
+      typeHost.appendChild(n);
+    });
+  }
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => { if (en.isIntersecting) activate(en.target); });
+  }, { rootMargin: '-42% 0px -42% 0px' });
+  steps.forEach(s => io.observe(s));
+  activate(steps[0]);
+})();
+
+/* ============ 光尘（新海诚式浮游微粒） ============ */
+(function(){
+  const canvas = document.getElementById('dust');
+  const ctx = canvas.getContext('2d');
+  let W,H,dpr;
+  function resize(){
+    W = innerWidth; H = innerHeight;
+    dpr = Math.min(devicePixelRatio||1, 2);
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  addEventListener('resize', resize); resize();
+  const N = 64;
+  const motes = Array.from({length:N}, () => spawn(true));
+  function spawn(anywhere){
+    return {
+      x: Math.random()*W,
+      y: anywhere ? Math.random()*H : H+10,
+      r: .8+Math.random()*1.9,
+      vy: .18+Math.random()*.4,       /* 缓缓上升 */
+      sway: Math.random()*Math.PI*2,
+      swayV: .004+Math.random()*.01,
+      tw: Math.random()*Math.PI*2,
+      twV: .02+Math.random()*.04,
+      gold: Math.random()<.4           /* 四成是金色光尘 */
+    };
+  }
+  let dustVisible = true, dustFrame = 0;
+  function schedule(){
+    if (prefersReducedMotion || !dustVisible || dustFrame) return;
+    dustFrame = requestAnimationFrame(drawDust);
+  }
+  function drawDust(t){
+    dustFrame = 0;
+    if (!dustVisible) return;
+    ctx.clearRect(0,0,W,H);
+    for (const m of motes){
+      m.y -= m.vy; m.x += Math.sin(m.sway += m.swayV)*.3;
+      if (m.y < -12) Object.assign(m, spawn(false));
+      const a = .25 + .45*(.5+.5*Math.sin(m.tw += m.twV));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = m.gold ? '#FFE9B8' : '#FFFFFF';
+      ctx.shadowColor = m.gold ? 'rgba(255,220,150,.9)' : 'rgba(200,225,255,.8)';
+      ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 7); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+    schedule();
+  }
+  new IntersectionObserver(es => {
+    dustVisible = es[0].isIntersecting;
+    if (dustVisible){ if (prefersReducedMotion) drawDust(performance.now()); else schedule(); }
+    else if (dustFrame){ cancelAnimationFrame(dustFrame); dustFrame = 0; }
+  }).observe(document.body);
+  schedule();
+})();
+
+/* ============ 粒子文字标题（暖白光版） ============ */
+(function(){
+  const canvas = document.getElementById('particleTitle');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const CONFIG = {
+    text: '余小莫的星空观察台',
+    particleSize: 1.0, density: 3, scatter: 100,
+    gatherDuration: 1200, stagger: 300,
+    repelStrength: 55, repelRadius: 110, idleDrift: 0.4,
+    color: '#FFFDF4', glow: 'rgba(255,232,180,0.16)',
+  };
+  let particles = [], mouse = {x:-1000,y:-1000}, animId = null;
+  let w = 0, h = 0, titleVisible = true, initialized = false;
+  function setSize(){
+    const rect = canvas.getBoundingClientRect();
+    w = rect.width; h = rect.height;
+    canvas.width = w*dpr; canvas.height = h*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function sampleTargets(){
+    const off = document.createElement('canvas');
+    const octx = off.getContext('2d');
+    const fontSize = Math.min(w*0.105, 116);
+    octx.font = `800 ${fontSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
+    const tw = octx.measureText(CONFIG.text).width, th = fontSize*1.2;
+    off.width = Math.ceil(tw+40); off.height = Math.ceil(th+40);
+    octx.font = `800 ${fontSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
+    octx.textAlign='center'; octx.textBaseline='middle'; octx.fillStyle='#fff';
+    octx.fillText(CONFIG.text, off.width/2, off.height/2);
+    const img = octx.getImageData(0,0,off.width,off.height);
+    const d = img.data, targets = [];
+    for (let y=0; y<off.height; y+=CONFIG.density)
+      for (let x=0; x<off.width; x+=CONFIG.density)
+        if (d[(y*off.width+x)*4+3] > 128) targets.push({x,y});
+    return {targets, ow:off.width, oh:off.height};
+  }
+  class Particle{
+    constructor(tx,ty,delay){
+      const a = Math.random()*Math.PI*2, dist = Math.random()*CONFIG.scatter + Math.random()*60;
+      this.x = tx+Math.cos(a)*dist; this.y = ty+Math.sin(a)*dist;
+      this.tx=tx; this.ty=ty; this.start = performance.now()+delay;
+      this.sz = CONFIG.particleSize*(0.6+Math.random()*0.8); this.op = 0;
+      this.driftX = (Math.random()-0.5)*CONFIG.idleDrift;
+      this.driftY = (Math.random()-0.5)*CONFIG.idleDrift;
+      this.vx=0; this.vy=0;
+    }
+    update(now){
+      const mdx=this.x-mouse.x, mdy=this.y-mouse.y, md=Math.sqrt(mdx*mdx+mdy*mdy);
+      let rx=0, ry=0;
+      if (md < CONFIG.repelRadius && md > 0){
+        const f = (1-md/CONFIG.repelRadius)*CONFIG.repelStrength;
+        rx = mdx/md*f; ry = mdy/md*f;
+      }
+      if (now > this.start){
+        const prog = Math.min((now-this.start)/CONFIG.gatherDuration, 1);
+        const eased = 1-Math.pow(1-prog,3);
+        this.vx += (this.tx-this.x)*0.045*(1-eased*0.3);
+        this.vy += (this.ty-this.y)*0.045*(1-eased*0.3);
+        this.vx += rx*0.25; this.vy += ry*0.25;
+        if (prog >= 1){ this.vx += this.driftX*0.08; this.vy += this.driftY*0.08; }
+        this.vx*=0.88; this.vy*=0.88;
+        this.x += this.vx; this.y += this.vy;
+        this.op = Math.min(prog*2.2, 1);
+      } else {
+        this.x += rx*0.03; this.y += ry*0.03; this.op = 0;
+      }
+    }
+    draw(c){
+      if (this.op <= 0) return;
+      c.globalAlpha = this.op*0.18; c.fillStyle = CONFIG.glow;
+      c.beginPath(); c.arc(this.x,this.y,this.sz*2.6,0,Math.PI*2); c.fill();
+      c.globalAlpha = this.op*0.34; c.fillStyle = CONFIG.glow;
+      c.beginPath(); c.arc(this.x,this.y,this.sz*1.3,0,Math.PI*2); c.fill();
+      c.globalAlpha = this.op; c.fillStyle = CONFIG.color;
+      c.beginPath(); c.arc(this.x,this.y,this.sz,0,Math.PI*2); c.fill();
+      c.globalAlpha = 1;
+    }
+  }
+  function build(){
+    setSize();
+    const {targets, ow, oh} = sampleTargets();
+    const ox = (w-ow)/2, oy = (h-oh)/2;
+    particles = targets.map((t,i) => new Particle(t.x+ox, t.y+oy, (i/targets.length)*CONFIG.stagger));
+  }
+  function stop(){ if (animId===null) return; cancelAnimationFrame(animId); animId=null; }
+  function schedule(){
+    if (!initialized || prefersReducedMotion || !titleVisible || document.hidden || animId!==null) return;
+    animId = requestAnimationFrame(loop);
+  }
+  function loop(now){
+    animId = null;
+    if (!titleVisible || document.hidden) return;
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p => p.update(now));
+    particles.forEach(p => p.draw(ctx));
+    schedule();
+  }
+  function settle(){
+    setSize();
+    particles.forEach(p => { p.x=p.tx; p.y=p.ty; p.vx=0; p.vy=0; p.op=1; });
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p => p.draw(ctx));
+  }
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mouse.x = e.clientX-r.left; mouse.y = e.clientY-r.top;
+  });
+  canvas.addEventListener('mouseleave', () => { mouse.x=-1000; mouse.y=-1000; });
+  new IntersectionObserver(([entry]) => {
+    titleVisible = entry.isIntersecting;
+    if (titleVisible) { if (prefersReducedMotion) settle(); else schedule(); }
+    else stop();
+  }).observe(canvas);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stop(); else if (prefersReducedMotion) settle(); else schedule();
+  });
+  document.fonts.ready.then(() => { build(); initialized = true; if (prefersReducedMotion) settle(); else schedule(); });
+  window.addEventListener('resize', () => { if (!initialized) return; stop(); build(); if (prefersReducedMotion) settle(); else schedule(); });
+})();
+</script>
+</body>
+</html>
