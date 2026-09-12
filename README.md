@@ -1,6 +1,6 @@
 # 余小莫的星空观察台
 
-> 一份把「开源 Skill · Agent 使用手记 · 自研 APP」装订成私人星表的个人内容站。
+> 一份把「开源 Skill · Agent 使用手记 · 在研装置」装订成私人星表的个人内容站。
 > 主站是一张深空星图，作品是星图上的星座；内容以 Markdown 维护，提交后由 GitHub Actions 持续构建并发布。
 
 [![在线预览](https://img.shields.io/badge/在线预览-rcrusoe88--bot.github.io-9b59b6)](https://rcrusoe88-bot.github.io/star-observatory/)
@@ -14,9 +14,8 @@
 ## 内容模型
 
 - **开源 Skill 图鉴**：展示可复用的开源 Skill、能力标签与捕获地。
-- **版本进化树**：记录项目从想法到可发布产品的演进。
 - **Agent 使用手记**：用 Markdown 记录真实排障、判断和反直觉结论。
-- **自研 APP**：持续补充个人软件与实验项目。
+- **在研装置**：持续补充个人软件与实验项目。
 
 新增手记只需要在 `notes/_inbox/` 放入一个 Markdown 文件。文件被发布到 `notes/` 后，会自动进入首页和手记索引，并生成独立的 `notes/<slug>.html` 详情页。
 
