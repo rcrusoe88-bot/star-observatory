@@ -600,7 +600,7 @@ footer .colophon .meta { color:#8f8da0; }
     <svg class="mini-const" width="46" height="36" viewBox="0 0 40 32"><polyline points="7.2,19.8 9.6,23 12.4,21.1 11.2,17.6 8,16 7.2,19.8" fill="none"/><circle cx="7.2" cy="19.8" r="1.8"/><circle cx="9.6" cy="23" r="1.8"/><circle cx="12.4" cy="21.1" r="1.8"/><circle cx="11.2" cy="17.6" r="1.8"/><circle cx="8" cy="16" r="1.8"/></svg>
     <h2>开源 Skill 图鉴</h2><span class="en">OPEN-SOURCE SKILL DEX</span>
   </div>
-  <p class="sync-note mono">内容清单由模板维护 · 最近观测 <b>2026-09-03</b> · 共 6 件原创 Skill</p>
+  <p class="sync-note mono">内容清单由模板维护 · 最近观测 <b>2026-09-03</b> · 共 <b id="dexCount">6</b> 件原创 Skill</p>
   <div class="deck" data-deck="skills"></div></section>
 
 <!-- ================= FIG.2 Agent 使用手记 ================= -->
@@ -675,8 +675,7 @@ const spy = new IntersectionObserver(entries => {
   const total = cards.length;
   if (total === 0) return;
 
-  const getPerPage = () => 3;
-  let perPage = getPerPage();
+  const perPage = 3;
   let current = 1;
   const totalPages = () => Math.max(1, Math.ceil(total / perPage));
 
@@ -708,7 +707,7 @@ const spy = new IntersectionObserver(entries => {
       if (start > 2) items.push(`<span class="pg-ellipsis">…</span>`);
     }
     for (let p = start; p <= end; p++) {
-      items.push(`<button class="${p===current?'pg-active':''}" data-go="${p}">${p}</button>`);
+      items.push(`<button class="${p===current?'pg-active':''}" data-go="${p}"${p===current?' aria-current="page"':''}>${p}</button>`);
     }
     if (end < tp) {
       if (end < tp - 1) items.push(`<span class="pg-ellipsis">…</span>`);
@@ -723,12 +722,11 @@ const spy = new IntersectionObserver(entries => {
     const btn = e.target.closest('button[data-go]');
     if (!btn) return;
     const p = parseInt(btn.dataset.go, 10);
-    if (p && p !== current) { current = p; renderPage(); }
-  });
-
-  window.addEventListener('resize', () => {
-    const np = getPerPage();
-    if (np !== perPage) { perPage = np; renderPage(); }
+    if (!p || p === current) return;
+    current = p; renderPage();
+    /* 重建分页器会移除被点击的按钮，把焦点交还给当前页按钮 */
+    const active = pager.querySelector('.pg-active');
+    if (active) active.focus();
   });
 
   renderPage();
@@ -2308,6 +2306,8 @@ function AtlSec(root, items, opts) {
     var b = document.querySelector('[data-deck="works"]');
     if (a) new AtlSec(a, SKILLS);
     if (b) new AtlSec(b, WORKS);
+    var n = document.getElementById('dexCount');
+    if (n) n.textContent = SKILLS.length;
   });
 })();
 </script>
