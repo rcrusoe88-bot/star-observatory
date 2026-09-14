@@ -7,7 +7,7 @@
 
 ## 在线预览
 
-🌐 **https://rcrusoe88-bot.github.io/star-observatory/** · 当前首页基于 `index-galaxy-v5.html`。
+🌐 **https://rcrusoe88-bot.github.io/star-observatory/** · 首页源文件为 `index.template.html`，手记卡片、手记索引与详情页均由 `build.mjs` 从 `notes/` 生成。
 
 站点使用 GitHub Pages 部署：推送到 `main` 后，CI 会校验笔记、生成 `dist/` 静态产物，并将 `dist/` 发布到 Pages。
 

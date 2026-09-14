@@ -38,10 +38,22 @@ if (pending.length === 0) {
   process.exit(0);
 }
 
-const allowedInboxPaths = new Set(pending.map(file => `notes/_inbox/${file}`));
-const dirtyEntries = execFileSync('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, encoding: 'utf8' })
+/* 收件箱由本脚本独占，其中的改动不算「其他未提交工作」；
+   其余任何脏改动都先让用户处理，避免和发布交错。 */
+const isInboxPath = p => p.startsWith('notes/_inbox/');
+const statusRecords = execFileSync('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, encoding: 'utf8' })
   .split('\0').filter(Boolean);
-const dirtyLines = dirtyEntries.filter(entry => !allowedInboxPaths.has(entry.slice(3).replace(/\\/g, '/')));
+/* -z 模式下重命名/复制记录形如 "R  新路径\0旧路径"，旧路径记录不带 XY 前缀，需配对读取 */
+const dirtyPaths = [];
+for (let i = 0; i < statusRecords.length; i++) {
+  const record = statusRecords[i];
+  dirtyPaths.push(record.slice(3).replace(/\\/g, '/'));
+  if (/^[RC]/.test(record)) {
+    i++;
+    dirtyPaths.push(statusRecords[i].replace(/\\/g, '/'));
+  }
+}
+const dirtyLines = dirtyPaths.filter(p => !isInboxPath(p));
 if (dirtyLines.length) {
   fail('工作区存在未提交修改。请先提交或清理修改，再运行发布，避免覆盖其他工作。');
   process.exit(1);
