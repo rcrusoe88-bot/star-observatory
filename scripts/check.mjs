@@ -41,6 +41,10 @@ if (indexCardCount !== noteFiles.length) {
 if (/<article\b/.test(notesIndex)) {
   throw new Error('手记索引不应再内嵌文章正文');
 }
+const homeCardCount = (index.match(/<a\s+class="flip-card"/g) || []).length;
+if (homeCardCount !== noteFiles.length) {
+  throw new Error(`首页手记卡片数量与源笔记不一致：生成 ${homeCardCount} 张，源文件 ${noteFiles.length} 篇`);
+}
 for (const { relativePath, html } of notePages) {
   const articleCount = (html.match(/<article\s+class="art"/g) || []).length;
   if (articleCount !== 1) throw new Error(`独立手记页面应只包含一篇正文：dist/${relativePath}`);
