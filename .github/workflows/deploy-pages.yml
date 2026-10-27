@@ -27,7 +27,7 @@ jobs:
       - name: Build and verify site
         run: node scripts/check.mjs
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
